@@ -1,0 +1,18 @@
+title = "Fabrik State"
+
+[gtfsfabrik.package.info]
+version = "0.0.1"
+
+[state.fabrik.config]
+place = "Chicago, IL, USA"
+geoscope = "csa"
+is_multiagency = true
+using_git = true
+has_gtfs = true
+has_osm = true
+
+[state.scenario]
+current = "basis"
+list = [ "basis", "alter" ]
+
+

@@ -1,13 +1,11 @@
 // local modules
 pub mod commands;
 pub mod utils;
-use utils::enums::GeoScope;
+use utils::geotypes::GeoScope;
+use utils::logging::*;
 
 // external crates
-use clap::{Parser, Subcommand, ValueEnum};
-use console::Style;
-
-use crate::utils::fabrik_logging;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
@@ -32,9 +30,10 @@ enum Commands {
         path: Option<String>,
 
         /// Path to GTFS data. Can be a zip file, unzipped folder, or a folder
-        /// containing multiple GTFS zip files or unzipped folders.
-        #[arg(long)]
-        gtfs: Option<String>,
+        /// containing multiple GTFS zip files or unzipped folders. Seperate
+        /// multiple paths with commas or spaces
+        #[arg(long, num_args = 1..)]
+        gtfs: Option<Vec<String>>,
 
         /// Path to OSM PBF data.
         #[arg(long)]
@@ -46,7 +45,7 @@ enum Commands {
         place: Option<String>,
 
         /// Geographic scope for the plant. Used in conjunction with --place.
-        #[arg(long, value_enum)]
+        #[arg(long)]
         geoscope: Option<GeoScope>,
 
         /// Path to a ridership CSV file. See docs/inputs/ridership.md.
@@ -123,12 +122,12 @@ fn main() {
                 Ok(_) => {
                     let init_success_message =
                         &format!("Successfully created a new fabrik at {}", path_copy);
-                    fabrik_logging::print_success(init_success_message);
+                    print_success(init_success_message);
                 }
                 Err(e) => {
                     let init_error_message =
                         &format!("Couldn't create a new fabrik at {}. {}", path_copy, e);
-                    fabrik_logging::print_error(init_error_message);
+                    print_error(init_error_message);
                 }
             }
         }

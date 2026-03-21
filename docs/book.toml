@@ -1,0 +1,12 @@
+[book]
+title = "gtfsfabrik Documentation"
+authors = ["Aaron Rumph"]
+description = "Documentation for the gtfsfabrik tool for working with gtfs data"
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+
+[output.html]
+default-theme = "ayu"

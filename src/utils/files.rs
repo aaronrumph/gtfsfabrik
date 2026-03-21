@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::DirEntry;
 use std::fs::File;
 use std::path::Path;
@@ -132,20 +133,79 @@ const REQUIRED_GTFS_FILES: &[RequiredGtfsFile] = &[
     RequiredGtfsFile::Calendar,
 ];
 
-/// Check whether the inputted unzipped(!!!) GTFS folder contains the minimum necessary files
-pub fn has_required_gtfs_files(unzipped_folder_path: &Path) -> Result<(), GtfsError> {
-    let missing_files: Vec<RequiredGtfsFile> = REQUIRED_GTFS_FILES
-        .iter()
-        .filter(|file| !unzipped_folder_path.join(file.to_string()).exists())
-        .cloned()
-        .collect();
+/// Check whether the inputted unzipped or zipped GTFS folder contains the minimum necessary files
+pub fn has_required_gtfs_files(gtfs_zip_or_dir: &Path) -> Result<(), GtfsError> {
+    // TODO: Add checks for correct columns in all files with functions for each (agency.txt,
+    // etc.)
 
-    match missing_files.is_empty() {
-        true => Ok(()),
-        false => {
-            let readable_path = unzipped_folder_path.to_string_lossy().to_string();
+    // NOTE: goal is to do this without unzipping files because 1. potentially expensive and slow
+    // and 2. hard to claw back any changes if unexpected panic and don't want to accidentally
+    // create massive temp artifacts
+
+    // case where is (hopefully) zipfile
+    if gtfs_zip_or_dir.is_file() {
+        let zip_file = File::open(gtfs_zip_or_dir)?;
+
+        // NOTE: Basing this off by_index example from zip crate docs
+        let mut archive = ZipArchive::new(zip_file)
+            .map_err(|_| GtfsError::NotAZip(gtfs_zip_or_dir.to_string_lossy().to_string()))?;
+
+        let mut zip_filenames: Vec<String> = Vec::new();
+        for i in 0..archive.len() {
+            if let Ok(file) = archive.by_index(i) {
+                zip_filenames.push(file.name().to_string());
+            }
+        }
+        let missing_files: Vec<RequiredGtfsFile> = REQUIRED_GTFS_FILES
+            .iter()
+            .filter(|f| !zip_filenames.contains(&f.to_string()))
+            .cloned()
+            .collect();
+
+        if missing_files.is_empty() {
+            Ok(())
+        } else {
+            Err(GtfsError::InvalidGTFS(
+                gtfs_zip_or_dir.to_string_lossy().to_string(),
+                missing_files,
+            ))
+        }
+    } else {
+        // case where is normal folder
+        let missing_files: Vec<RequiredGtfsFile> = REQUIRED_GTFS_FILES
+            .iter()
+            .filter(|file| !gtfs_zip_or_dir.join(file.to_string()).exists())
+            .cloned()
+            .collect();
+
+        if missing_files.is_empty() {
+            Ok(())
+        } else {
+            let readable_path = gtfs_zip_or_dir.to_string_lossy().to_string();
             let error_to_give = GtfsError::InvalidGTFS(readable_path, missing_files);
-            Err(error_to_give)
+            return Err(error_to_give);
         }
     }
+}
+
+/// Check whether the inputted zipfile or
+
+/// Check that inputed gtfs argument is valid
+pub fn validate_gtfs(gtfs_args: &Vec<String>) -> Result<Vec<GtfsInputType>, GtfsError> {
+    let mut gtfs_types: Vec<GtfsInputType> = Vec::new();
+    for path in gtfs_args {
+        let input_type = det_gtfs_input_type(path)?;
+        match det_gtfs_input_type(path)? {
+            GtfsInputType::ZipFile(_path) | GtfsInputType::UnzippedFolder(_path) => {
+                has_required_gtfs_files(&_path)?;
+            }
+            GtfsInputType::MultipleZips(_path) | GtfsInputType::MultipleFolders(_path) => {
+                for listing in std::fs::read_dir(_path)?.filter_map(|e| e.ok()) {
+                    has_required_gtfs_files(&listing.path())?;
+                }
+            }
+        }
+        gtfs_types.push(input_type)
+    }
+    Ok(gtfs_types)
 }

@@ -1,7 +1,7 @@
 use crate::utils::errors::InitError;
-use crate::utils::files::{det_gtfs_input_type, GtfsInputType};
+use crate::utils::files::{validate_gtfs, GtfsInputType};
 use std::fs;
-use std::io::{self};
+use std::io;
 use std::path::PathBuf;
 
 pub struct InitOptions {
@@ -18,34 +18,29 @@ pub fn init_fabrik(init_options: InitOptions) -> Result<(), InitError> {
     // TODO: Because changed gtfs to vec of strings, need to go through each one and then
     // us that for gtfs paths
 
-    if let Some(gtfs_path_or_paths) = &init_options.gtfs {
-        let mut gtfs_paths: Vec<String> = Vec::new();
-        for path in &gtfs_path_or_paths {
-            match det_gtfs_input_type(path)? {
-                GtfsInputType::ZipFile(p) => {
-                    // TODO: unzip file and place in data directory within new fabrik
-                }
-                GtfsInputType::UnzippedFolder(p) => {
-                    // TODO: validate and move files that are part of acceptable gtfs ONLY
-                }
-                GtfsInputType::MultipleZips(p) => {
-                    // TODO: unzip each one and put in data dir
-                }
-                GtfsInputType::MultipleFolders(p) => {
-                    // TODO: Go over each folder, validate, and move to data/
-                }
-            }
-        }
-        // a couple of cases to test if it is a valid path
-    }
+    // before making any changes to file system, need to validate inputs !
 
-    // input validation to make sure flags given can be used
-    if let Some(gs) = &init_options.geoscope {
-        match gs.as_str() {
+    // will use gtfs_types (which contain pathbufs for valid gtfs paths) later to create data
+    // folder if some(type) = gtfs_types
+    let gtfs_types = if let Some(gtfs_paths) = &init_options.gtfs {
+        Some(validate_gtfs(gtfs_paths)?)
+    } else {
+        None
+    };
+
+    // geoscope
+    if let Some(geoscope) = &init_options.geoscope {
+        match geoscope.as_str() {
             "place" | "county" | "msa" | "csa" => {}
             _ => return Err(InitError::InvalidGeoScope),
         }
     }
+
+    // TODO: osm validation! need to find osm pbf crate probably
+
+    // TODO: place validation with nomanatim (get to learn reqwuests)
+
+    // TODO: ridership validation
 
     // create the fabrik
     let fabrik_base_path = PathBuf::from(&init_options.path);

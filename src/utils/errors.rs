@@ -19,6 +19,9 @@ pub enum InitError {
 
     #[error("GTFS error: {0}")]
     GTFSError(#[from] GtfsError),
+
+    #[error("OSM Error!: {0}")]
+    OSMError(#[from] OSMErorr),
 }
 
 #[derive(Debug, Error)]
@@ -57,8 +60,8 @@ impl std::fmt::Display for GtfsError {
                 path,
                 format_missing_gtfs_files(missing)
             ),
-            GtfsError::IoError(path) => write!(f, "Some unknown/unexpected IO error occured with '{}' Maybe try checking file permissions or submitting a bug report", path),
-            GtfsError::Other(path) => write!(f, "Some unknown/unexpected error occured using the provided path: '{}' . Feel free to submit a bug report", path)
+            GtfsError::IoError(path) => write!(f, "An IO error occured with '{}' Maybe try checking file permissions or submitting a bug report", path),
+            GtfsError::Other(path) => write!(f, "The provided path is not a GTFS folder or zipfile!: '{}' . Submit a bug report if you believe this is incorrect", path)
         }
     }
 }
@@ -68,4 +71,21 @@ impl From<std::io::Error> for GtfsError {
     fn from(e: std::io::Error) -> Self {
         GtfsError::IoError(e.to_string())
     }
+}
+
+// OSM SECTION ---------
+
+#[derive(Debug, Error)]
+pub enum OSMErorr {
+    #[error("No file was found at the path you provided: {0}")]
+    FileNotFound(String),
+
+    #[error("The file you inputted was not an OSM PBF file! {0}")]
+    NotAPbfFile(String),
+
+    #[error("The path you gave is a directory, not a file! {0}")]
+    NotAFile(String),
+
+    #[error("Unknown error with path {0}")]
+    UnknownError(String),
 }

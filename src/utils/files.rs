@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs::DirEntry;
 use std::fs::File;
 use std::path::Path;
@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use zip::ZipArchive;
 
 use crate::utils::errors::GtfsError;
+use crate::utils::errors::OSMErorr;
 
 #[derive(Debug)]
 pub enum GtfsInputType {
@@ -14,6 +15,8 @@ pub enum GtfsInputType {
     MultipleZips(PathBuf),
     MultipleFolders(PathBuf),
 }
+
+// TODO: refactor with a is_a_zipfile function
 
 // TODO: Clean up logic and readability of this function
 pub fn det_gtfs_input_type(path: &str) -> Result<GtfsInputType, GtfsError> {
@@ -59,10 +62,8 @@ pub fn det_gtfs_input_type(path: &str) -> Result<GtfsInputType, GtfsError> {
             // check whether directorie has zips with same try to unzip method as before
             let has_zips = contents.iter().any(|listing| {
                 let listing_path = listing.path();
-                if listing_path.is_file() {
-                    if let Ok(file) = File::open(&listing_path) {
+                if listing_path.is_file() && let Ok(file) = File::open(&listing_path) {
                         return ZipArchive::new(file).is_ok();
-                    }
                 }
                 false
             });
@@ -84,6 +85,8 @@ pub fn det_gtfs_input_type(path: &str) -> Result<GtfsInputType, GtfsError> {
             }
         }
     }
+
+    // TODO: if not a gtfs folder/file give error that says so
 
     Err(GtfsError::Other(path.to_string()))
 }
@@ -183,12 +186,10 @@ pub fn has_required_gtfs_files(gtfs_zip_or_dir: &Path) -> Result<(), GtfsError> 
         } else {
             let readable_path = gtfs_zip_or_dir.to_string_lossy().to_string();
             let error_to_give = GtfsError::InvalidGTFS(readable_path, missing_files);
-            return Err(error_to_give);
+            Err(error_to_give)
         }
     }
 }
-
-/// Check whether the inputted zipfile or
 
 /// Check that inputed gtfs argument is valid
 pub fn validate_gtfs(gtfs_args: &Vec<String>) -> Result<Vec<GtfsInputType>, GtfsError> {
@@ -208,4 +209,27 @@ pub fn validate_gtfs(gtfs_args: &Vec<String>) -> Result<Vec<GtfsInputType>, Gtfs
         gtfs_types.push(input_type)
     }
     Ok(gtfs_types)
+}
+
+// OSM SECTION ---
+
+// NOTE: Write PBF verification function using header???
+fn validate_osm(osm_arg: &str) -> Result<(), OSMErorr> {
+    // doing lazy check for extension becaused 1. no good crate that will check for headers etc and
+    // 2. it's good enough for Osmium
+    let input_path = osm_arg.to_string();
+    let file_path = Path::new(osm_arg);
+    if let Some(file_ext) = file_path.extension().and_then(OsStr::to_str) {
+        if file_ext == "pbf" {
+            Ok(())
+        } else {
+            Err(OSMErorr::NotAPbfFile(input_path))
+        }
+    } else if file_path.is_dir() {
+        Err(OSMErorr::NotAFile(input_path))
+    } else if !file_path.exists() {
+        Err(OSMErorr::FileNotFound(input_path))
+    } else {
+        Err(OSMErorr::UnknownError(input_path))
+    }
 }

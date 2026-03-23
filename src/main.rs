@@ -104,6 +104,8 @@ fn main() {
             ridership,
             usegit,
         } => {
+            // TODO: add error handling for no path
+            // BUG: will panic if no path provided. Give user error message
             let _path = path.unwrap(); // TODO: change from unwrap for safety once know
                                        // commands work
             let path_copy = _path.clone();
@@ -126,7 +128,7 @@ fn main() {
                 }
                 Err(e) => {
                     let init_error_message =
-                        &format!("Couldn't create a new fabrik at {}. {}", path_copy, e);
+                        &format!("Couldn't create a new fabrik at {}.\n{}", path_copy, e);
                     print_error(init_error_message);
                 }
             }

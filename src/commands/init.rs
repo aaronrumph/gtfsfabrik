@@ -1,5 +1,5 @@
 use crate::utils::errors::InitError;
-use crate::utils::files::{validate_gtfs, GtfsInputType};
+use crate::utils::files::gtfs::{validate_gtfs, GtfsInputType};
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -22,7 +22,7 @@ pub fn init_fabrik(init_options: InitOptions) -> Result<(), InitError> {
 
     // will use gtfs_types (which contain pathbufs for valid gtfs paths) later to create data
     // folder if some(type) = gtfs_types
-    let gtfs_types = if let Some(gtfs_paths) = &init_options.gtfs {
+    let gtfs_types: Option<Vec<GtfsInputType>> = if let Some(gtfs_paths) = &init_options.gtfs {
         Some(validate_gtfs(gtfs_paths)?)
     } else {
         None

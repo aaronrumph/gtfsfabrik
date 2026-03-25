@@ -1,7 +1,6 @@
 // Module containing all the errors that can arise
-
-use crate::utils::files::format_missing_gtfs_files;
-use crate::utils::files::RequiredGtfsFile;
+use crate::utils::files::gtfs::format_missing_gtfs_files;
+use crate::utils::files::gtfs::RequiredGtfsFile;
 
 use std::io;
 use thiserror::Error;

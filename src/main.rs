@@ -106,12 +106,15 @@ fn main() {
         } => {
             // TODO: add error handling for no path
             // BUG: will panic if no path provided. Give user error message
-            let _path = path.unwrap(); // TODO: change from unwrap for safety once know
-                                       // commands work
-            let path_copy = _path.clone();
+            let input_path = path
+                .expect("ERROR: You must provide a path for the fabrik! Could not create fabrik");
+            // TODO: change from unwrap for safety once know
+            // commands work
+
+            let path_copy = input_path.clone();
 
             let options = commands::init::InitOptions {
-                path: _path,
+                path: input_path,
                 gtfs,
                 osm,
                 place,

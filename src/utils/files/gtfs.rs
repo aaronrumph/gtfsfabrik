@@ -210,3 +210,247 @@ pub fn validate_gtfs(gtfs_args: &Vec<String>) -> Result<Vec<GtfsInputType>, Gtfs
     }
     Ok(gtfs_types)
 }
+
+// ALL POSSIBLE GTFS FILES
+#[derive(Debug, Clone)]
+pub enum GtfsFiles {
+    // required
+    Agency,
+    Stops, // only required if fixed route service! ADA/demand response is a whole can of worms
+    Routes,
+    Trips,
+    StopTimes,
+    Calendar,
+
+    // optional / conditionally required
+    CalendarDates,
+    FareAtrributes,
+    FareRules,
+    TimeFrames,
+    RiderCategories,
+    FareMedia,
+    FareProducts,
+    FareLegRules,
+    FareLegJoinRules,
+    FareTransferRules,
+    Areas,
+    StopAreas,
+    Networks,
+    RouteNetworks,
+    Shapes,
+    Frequencies,
+    Transfers,
+    Pathways,
+    Levels,
+    LocationGroups,
+    LocationGroupStops,
+    Locations,
+    BookingRules,
+    Translations,
+    FeedInfo,
+    Attributions,
+}
+
+impl std::fmt::Display for GtfsFiles {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let filename = match self {
+            GtfsFiles::Agency => "agency.txt",
+            GtfsFiles::Stops => "stops.txt",
+            GtfsFiles::Routes => "routes.txt",
+            GtfsFiles::Trips => "trips.txt",
+            GtfsFiles::StopTimes => "stop_times.txt",
+            GtfsFiles::Calendar => "calendar.txt",
+            GtfsFiles::CalendarDates => "calendar_dates.txt",
+            GtfsFiles::FareAtrributes => "fare_atrributes.txt",
+            GtfsFiles::FareRules => "fare_rules.txt",
+            GtfsFiles::TimeFrames => "timeframes.txt",
+            GtfsFiles::RiderCategories => "rider_categories.txt",
+            GtfsFiles::FareMedia => "fare_media.txt",
+            GtfsFiles::FareProducts => "fare_products.txt",
+            GtfsFiles::FareLegRules => "fare_leg_rules.txt",
+            GtfsFiles::FareLegJoinRules => "fare_leg_join_rules.txt",
+            GtfsFiles::FareTransferRules => "fare_transfer_rules.txt",
+            GtfsFiles::Areas => "areas.txt",
+            GtfsFiles::StopAreas => "stop_areas.txt",
+            GtfsFiles::Networks => "networks.txt",
+            GtfsFiles::RouteNetworks => "route_networks.txt",
+            GtfsFiles::Shapes => "shapes.txt",
+            GtfsFiles::Frequencies => "frequencies.txt",
+            GtfsFiles::Transfers => "transfers.txt",
+            GtfsFiles::Pathways => "pathways.txt",
+            GtfsFiles::Levels => "levels.txt",
+            GtfsFiles::LocationGroups => "location_groups.txt",
+            GtfsFiles::LocationGroupStops => "location_group_stops.txt",
+            GtfsFiles::Locations => "locations.geojson",
+            GtfsFiles::BookingRules => "booking_rules.txt",
+            GtfsFiles::Translations => "translations.txt",
+            GtfsFiles::FeedInfo => "feed_info.txt",
+            GtfsFiles::Attributions => "attributions.txt",
+        };
+        write!(f, "{}", filename)
+    }
+}
+
+// Required headers/columns for each csv !!
+
+// per gtfs spec, some files' precense is required/optional/conditionally required
+// NOTE: Conditionally Required checks? Not currently doing because labor, but might be worth it?
+#[derive(Debug, Clone, PartialEq)]
+pub enum ColumnPresence {
+    Required,
+    ConditionallyRequired,
+    ConditionallyForbidden,
+    Optional,
+}
+
+// FIRST MACRO!  using so that don't have to manually write both enum and display impl for all gtfs
+// files
+
+macro_rules! gtfs_columns {
+    ($file_name:ident { $($column:ident => $col_in_file_name:literal, $required:ident),* $(,)? }) => {
+        #[derive(Debug, Clone)]
+        pub enum $file_name {
+            $($column),*
+        }
+
+        impl std::fmt::Display for $file_name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let name = match self {
+                    $($file_name::$column => $col_in_file_name),*
+                };
+                write!(f, "{}", name)
+            }
+        }
+
+        impl $file_name {
+            pub fn presence(&self) -> ColumnPresence {
+                match self {
+                    $($file_name::$column => ColumnPresence::$required),*
+                }
+            }
+
+            pub fn get_required() -> Vec<Self> {
+                vec![$($file_name::$column),*].into_iter().filter(|c| c.presence() == ColumnPresence::Required).collect()
+            }
+
+            pub fn get_conditionally_required() -> Vec<Self> {
+                vec![$($file_name::$column),*].into_iter().filter(|c| c.presence() == ColumnPresence::ConditionallyRequired).collect()
+            }
+
+            pub fn get_conditionally_forbidden() -> Vec<Self> {
+                vec![$($file_name::$column),*].into_iter().filter(|c| c.presence() == ColumnPresence::ConditionallyForbidden).collect()
+            }
+            pub fn get_optional() -> Vec<Self> {
+                vec![$($file_name::$column),*].into_iter().filter(|c| c.presence() == ColumnPresence::Optional).collect()
+            }
+        }
+    };
+}
+
+// The following gtfs_columns! macro invocations make enums that already have 1. Display (for
+// actual plain text names) and 2. presence information already implemented
+
+gtfs_columns!(AgencyColumns {
+    ID => "agency_id", ConditionallyRequired,
+    Name => "agency_name", Required,
+    URL => "agency_url", Required,
+    Timezone => "agency_timezone", Required,
+    Lang => "agency_lang", Optional,
+    Phone => "agency_phone", Optional,
+    FareUrl => "agency_fare_url", Optional,
+    Email => "agency_email", Optional,
+    CEMVSupport => "cemv_support", Optional,
+});
+
+gtfs_columns!(StopColumns {
+    StopID => "stop_id", Required,
+    Code => "stop_code", Optional,
+    Name => "stop_name", ConditionallyRequired,
+    TTSName => "tts_stop_name", Optional,
+    Description => "stop_desc", Optional,
+    Latitude => "stop_lat", ConditionallyRequired,
+    Longitude => "stop_lon", ConditionallyRequired,
+    ZoneID => "zone_id", Optional,
+    URL => "stop_url", Optional,
+    LocationType => "location_type", Optional,
+    ParentStation => "parent_station", ConditionallyRequired,
+    Timezone => "stop_timezone", Optional,
+    WheelchairBoarding => "wheelchair_boarding", Optional,
+    LevelID => "level_id", Optional,
+    PlatformCode => "platform_code", Optional,
+    Access => "stop_access", ConditionallyForbidden,
+});
+
+gtfs_columns!(RouteColumns {
+    RouteID => "route_id", Required,
+    AgencyID => "agency_id", ConditionallyRequired,
+    ShortName => "route_short_name", ConditionallyRequired,
+    LongName => "route_long_name", ConditionallyRequired,
+    Description => "route_desc", Optional,
+    Type => "route_type", Required,
+    URL => "route_url", Optional,
+    Color => "route_color", Optional,
+    TextColor => "route_text_color", Optional,
+    SortOrder => "route_sort_order", Optional,
+    ContinuousPickup => "continuous_pickup", ConditionallyForbidden,
+    ContinuousDropOff => "continuous_drop_off", ConditionallyForbidden,
+    NetworkID => "network_id", ConditionallyForbidden,
+    CEMVSupport => "cemv_support", Optional,
+});
+
+gtfs_columns!(TripColumns {
+    RouteID => "route_id", Required,
+    ServiceID => "service_id", Required,
+    TripID => "trip_id", Required,
+    HeadSign => "trip_headsign", Optional,
+    ShortName => "trip_short_name", Optional,
+    DirectionID => "direction_id", Optional,
+    BlockID => "block_id", Optional,
+    ShapeID => "shape_id", ConditionallyRequired,
+    WheelchairAccessible => "wheelchair_accessible", Optional,
+    BikesAllowed => "bikes_allowed", Optional,
+    CarsAllowed => "cars_allowed", Optional,
+});
+
+gtfs_columns!(StopTimesColumns {
+    TripID => "trip_id", Required,
+    ArrivalTime => "arrival_time", ConditionallyRequired,
+    DepartureTime => "departure_time", ConditionallyRequired,
+    StopID => "stop_id", ConditionallyRequired,
+    LocationGroupID => "location_group_id", ConditionallyForbidden,
+    LocationID => "location_id", ConditionallyForbidden,
+    StopSequence => "stop_sequence", Required,
+    StopHeadsign => "stop_headsign", Optional,
+    StartPickupDropOffWindow => "start_pickup_drop_off_window", ConditionallyRequired,
+    EndPickupDropOffWindow => "end_pickup_drop_off_window", ConditionallyRequired,
+    PickupType => "pickup_type", ConditionallyForbidden,
+    DropOffType => "drop_off_type", ConditionallyForbidden,
+    ContinuousPickup => "continuous_pickup", ConditionallyForbidden,
+    ContinuousDropOff => "continuous_drop_off", ConditionallyForbidden,
+    ShapeDistTraveled => "shape_dist_traveled", Optional,
+    Timepoint => "timepoint", Optional,
+    PickupBookingRuleId => "pickup_booking_rule_id", Optional,
+    DropOffBookingRuleId => "drop_off_booking_rule_id", Optional,
+});
+
+gtfs_columns!(CalendarTimes {
+    ServiceID => "service_id", Required,
+    Monday => "monday", Required,
+    Tuesday => "tuesday", Required,
+    Wednesday => "wednesday", Required,
+    Thursday => "thursday", Required,
+    Friday => "friday", Required,
+    Saturday => "saturday", Required,
+    Sunday => "sunday", Required,
+    StartDate => "start_date", Required,
+    EndDate => "end_date", Required,
+});
+
+gtfs_columns!(CalendarDates {
+    ServiceID => "service_id", Required,
+    Date => "date", Required,
+    ExceptionType => "exception_type", Required,
+});
+
+// TODO: add column checks for required files
+// TODO: Add columns for all files?

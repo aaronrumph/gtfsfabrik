@@ -1,6 +1,9 @@
 // local modules
+pub mod algorithms;
 pub mod commands;
+pub mod gtfs;
 pub mod utils;
+
 use utils::geotypes::GeoScope;
 use utils::logging::*;
 

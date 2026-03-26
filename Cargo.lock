@@ -522,6 +522,7 @@ dependencies = [
  "clap",
  "console",
  "geo",
+ "rayon",
  "serde",
  "tempfile",
  "thiserror",

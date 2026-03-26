@@ -1,4 +1,6 @@
 // Module containing all the errors that can arise
+use crate::gtfs::datetime::Seconds;
+use crate::gtfs::types::stop::StopID;
 use crate::utils::files::gtfs::format_missing_gtfs_files;
 use crate::utils::files::gtfs::RequiredGtfsFile;
 
@@ -72,7 +74,7 @@ impl From<std::io::Error> for GtfsError {
     }
 }
 
-// OSM SECTION ---------
+// OSM SECTION !
 
 #[derive(Debug, Error)]
 pub enum OSMErorr {
@@ -87,4 +89,33 @@ pub enum OSMErorr {
 
     #[error("Unknown error with path {0}")]
     UnknownError(String),
+}
+
+// RAPTOR SECTION !
+
+#[derive(Debug, Error)]
+pub enum RaptorError {
+    #[error("Destination stop is not reachable from origin station")]
+    DestinationUnreachable {
+        origin: StopID,
+        destination: StopID,
+        departure_time: Seconds,
+    },
+
+    // TODO: Replace earliest_departure time with non-seconds (actual time)
+    #[error("No trips found for route {route_id} after {earliest_departure}s")]
+    NoTrips {
+        route_id: String,
+        earliest_departure: Seconds,
+    },
+
+    #[error("Journey has no legs")]
+    EmptyJourney,
+
+    #[error("Route {route_id} not found in timetable")]
+    RouteNotFound { route_id: String },
+
+    // TODO: same as above
+    #[error("Departure time {0} is invalid")]
+    InvalidDepartureTime(Seconds),
 }

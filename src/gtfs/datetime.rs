@@ -2,7 +2,9 @@
 
 const MIDNIGHT_SECONDS: i32 = 24 * 60 * 60;
 
-enum DayOfWeek {
+pub type Seconds = usize;
+
+pub enum DayOfWeek {
     Monday,
     Tuesday,
     Wednesday,
@@ -12,7 +14,7 @@ enum DayOfWeek {
     Sunday,
 }
 
-struct Date {
+pub struct Date {
     pub year: i32,
     pub month: i32,
     pub day: i32,
@@ -20,30 +22,30 @@ struct Date {
 }
 
 // because GTFS times allows times past midnight to be counted as part of same day
-enum Day {
+pub enum Day {
     CurrentDay,
     NextDay,
 }
 
-struct Time {
+pub struct Time {
     pub day: Day,
     pub hour: i32,
     pub minute: i32,
     pub second: i32,
 }
 
-struct DateTime {
+pub struct DateTime {
     date: Date,
     time: Time,
 }
 
 impl Time {
-    fn new(hour: i32, minute: i32, second: i32) -> Self {
-        let mut day: Day;
+    pub fn new(hour: i32, minute: i32, second: i32) -> Self {
+        let day: Day;
         if hour >= 24 {
-            is_next_day = Day::NextDay;
+            day = Day::NextDay;
         } else {
-            is_next_day = Day::CurrentDay;
+            day = Day::CurrentDay;
         }
 
         Self {

@@ -1,7 +1,7 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TripID {
-    id: String
-};
+    pub id: String,
+}
 
 impl TripID {
     pub fn new(id: &str) -> Self {

@@ -4,7 +4,7 @@ use serde::Serialize;
 // putting StopID struct seperately so can reuse in raptor
 #[derive(Debug, Serialize, PartialEq, Eq, Hash, Clone)]
 pub struct StopID {
-    id: String,
+    pub id: String,
 }
 
 impl StopID {

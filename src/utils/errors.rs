@@ -1,6 +1,6 @@
 // Module containing all the errors that can arise
+use crate::algorithms::RAPTOR::RaptorStopID;
 use crate::gtfs::datetime::Seconds;
-use crate::gtfs::types::stop::StopID;
 use crate::utils::files::gtfs::format_missing_gtfs_files;
 use crate::utils::files::gtfs::RequiredGtfsFile;
 
@@ -97,8 +97,8 @@ pub enum OSMErorr {
 pub enum RaptorError {
     #[error("Destination stop is not reachable from origin station")]
     DestinationUnreachable {
-        origin: StopID,
-        destination: StopID,
+        origin: RaptorStopID,
+        destination: RaptorStopID,
         departure_time: Seconds,
     },
 

@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RouteID {
-    id: String,
+    pub id: String,
 }
 
 impl RouteID {
@@ -8,4 +8,3 @@ impl RouteID {
         Self { id: id.to_string() }
     }
 }
-

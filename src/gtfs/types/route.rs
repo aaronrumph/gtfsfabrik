@@ -1,3 +1,8 @@
+use crate::read_gtfs;
+use crate::utils::files::gtfs::GtfsFiles;
+
+use polars::prelude::*;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RouteID {
     pub id: String,

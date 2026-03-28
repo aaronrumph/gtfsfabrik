@@ -1,3 +1,4 @@
+// utils for RAPTOR function
 use serde::Serialize;
 
 use crate::gtfs::datetime::Seconds;
@@ -70,8 +71,8 @@ pub struct RaptorTrip {
 #[derive(Clone, Debug)]
 pub struct RaptorRoute {
     pub route_id: RaptorRouteID,
-    pub stops: Vec<RaptorStopID>,
-    pub trips: Vec<RaptorTrip>,
+    pub stops: Vec<RaptorStopID>, // NOTE: Stops must be in sequential order along route
+    pub trips: Vec<RaptorTrip>,   // NOTE: Trips must be in sequential order by depart time
 }
 
 #[derive(Clone)]
@@ -106,21 +107,11 @@ impl RaptorTimetable {
 
     // Takes gets the earliest arrival for a given route for a given trip for a given stop (as
     // given by stop sequence position)
-    pub fn get_arrival_time(
-        &self,
-        route_id: RaptorRouteID,
-        trip_idx: usize,
-        stop_idx: usize,
-    ) -> Seconds {
+    pub fn get_arrival_time(&self, route_id: RaptorRouteID, trip_idx: usize, stop_idx: usize) -> Seconds {
         self.routes[route_id.id].trips[trip_idx].stop_times[stop_idx].arrival
     }
 
-    pub fn get_departure_time(
-        &self,
-        route_id: RaptorRouteID,
-        trip_idx: usize,
-        stop_idx: usize,
-    ) -> Seconds {
+    pub fn get_departure_time(&self, route_id: RaptorRouteID, trip_idx: usize, stop_idx: usize) -> Seconds {
         self.routes[route_id.id].trips[trip_idx].stop_times[stop_idx].departure
     }
 }
@@ -145,12 +136,7 @@ pub struct Journey {
 }
 
 impl Journey {
-    pub fn new(
-        origin: RaptorStopID,
-        destination: RaptorStopID,
-        departure_time: Seconds,
-        legs: Vec<Leg>,
-    ) -> Self {
+    pub fn new(origin: RaptorStopID, destination: RaptorStopID, departure_time: Seconds, legs: Vec<Leg>) -> Self {
         Self {
             origin,
             destination,
@@ -161,10 +147,7 @@ impl Journey {
 
     // gets the overall arrival time for the Journey (returns INFINITY if dest stop unreachable)
     pub fn arrival_time(&self) -> Seconds {
-        self.legs
-            .last()
-            .map(|last| last.leg_end_time)
-            .unwrap_or(INFINITY)
+        self.legs.last().map(|last| last.leg_end_time).unwrap_or(INFINITY)
     }
 
     // returns the number of legs/transfers for the journery
@@ -271,21 +254,13 @@ impl RaptorState {
 
     // updates earliest arrival time for round/best if better. Returns true if new time is better
     // than old times
-    pub fn update(
-        &mut self,
-        round: usize,
-        stop: RaptorStopID,
-        arrival_time: Seconds,
-        leg: Leg,
-    ) -> bool {
+    pub fn update(&mut self, round: usize, stop: RaptorStopID, arrival_time: Seconds, leg: Leg) -> bool {
         // short circuit to prevent boarding before leaving
         if arrival_time < self.departure_time {
             return false;
         }
         let dest_best = self.tau_best[self.destination_stop.id];
-        if arrival_time < self.tau_current[stop.id]
-            && arrival_time < self.tau_best[stop.id]
-            && arrival_time < dest_best
+        if arrival_time < self.tau_current[stop.id] && arrival_time < self.tau_best[stop.id] && arrival_time < dest_best
         {
             self.tau_current[stop.id] = arrival_time;
             self.tau_best[stop.id] = arrival_time;

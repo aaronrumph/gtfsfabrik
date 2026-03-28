@@ -1,5 +1,5 @@
 // Module containing all the errors that can arise
-use crate::algorithms::RAPTOR::RaptorStopID;
+use crate::algorithms::raptor::utils::RaptorStopID;
 use crate::gtfs::datetime::Seconds;
 use crate::utils::files::gtfs::format_missing_gtfs_files;
 use crate::utils::files::gtfs::RequiredGtfsFile;
@@ -118,4 +118,10 @@ pub enum RaptorError {
     // TODO: same as above
     #[error("Departure time {0} is invalid")]
     InvalidDepartureTime(Seconds),
+
+    #[error("Polars error: {0}")]
+    PolarsError(#[from] polars::prelude::PolarsError),
+
+    #[error("Missing stop at index {0} during timetable construction")]
+    MissingStop(usize),
 }

@@ -1,12 +1,11 @@
+use ::zip::ZipArchive;
 use std::ffi::OsStr;
 use std::fs::DirEntry;
 use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
-use zip::ZipArchive;
 
 use crate::utils::errors::GtfsError;
-use crate::utils::errors::OSMErorr;
 
 #[derive(Debug)]
 pub enum GtfsInputType {
@@ -43,9 +42,7 @@ pub fn det_gtfs_input_type(path: &str) -> Result<GtfsInputType, GtfsError> {
         // 2. multiagency folder containing unzipped folders,
         // 3. multiagency folder containing multiple zips,
 
-        let contents: Vec<DirEntry> = std::fs::read_dir(input_path)?
-            .filter_map(|e| e.ok())
-            .collect();
+        let contents: Vec<DirEntry> = std::fs::read_dir(input_path)?.filter_map(|e| e.ok()).collect();
 
         // TODO: find way to refine assumption below and at
 
@@ -76,8 +73,7 @@ pub fn det_gtfs_input_type(path: &str) -> Result<GtfsInputType, GtfsError> {
             // as before
             let has_gtfs_subfolders = contents.iter().any(|listing| {
                 listing.path().is_dir()
-                    && (listing.path().join("stops.txt").exists()
-                        || listing.path().join("agency.txt").exists())
+                    && (listing.path().join("stops.txt").exists() || listing.path().join("agency.txt").exists())
             });
 
             if has_gtfs_subfolders {
@@ -119,11 +115,7 @@ impl std::fmt::Display for RequiredGtfsFile {
 }
 
 pub fn format_missing_gtfs_files(files: &[RequiredGtfsFile]) -> String {
-    files
-        .iter()
-        .map(|f| f.to_string())
-        .collect::<Vec<_>>()
-        .join(", ")
+    files.iter().map(|f| f.to_string()).collect::<Vec<_>>().join(", ")
 }
 
 // using to check off which files which are required are present (cross-off)
@@ -150,8 +142,8 @@ pub fn has_required_gtfs_files(gtfs_zip_or_dir: &Path) -> Result<(), GtfsError> 
         let zip_file = File::open(gtfs_zip_or_dir)?;
 
         // NOTE: Basing this off by_index example from zip crate docs
-        let mut archive = ZipArchive::new(zip_file)
-            .map_err(|_| GtfsError::NotAZip(gtfs_zip_or_dir.to_string_lossy().to_string()))?;
+        let mut archive =
+            ZipArchive::new(zip_file).map_err(|_| GtfsError::NotAZip(gtfs_zip_or_dir.to_string_lossy().to_string()))?;
 
         let mut zip_filenames: Vec<String> = Vec::new();
         for i in 0..archive.len() {
@@ -454,3 +446,18 @@ gtfs_columns!(CalendarDates {
 
 // TODO: add column checks for required files
 // TODO: Add columns for all files?
+
+// macro to read in gtfs file to Dataframe with read_gtfs!(GtfsFiles::...) !!!!
+#[macro_export]
+macro_rules! read_gtfs {
+    ($path:expr, GtfsFiles::$variant:ident) => {{
+        use polars::prelude::*;
+        let file = $crate::utils::files::gtfs::GtfsFiles::$variant;
+        let path = std::path::Path::new($path).join(file.to_string());
+        CsvReadOptions::default()
+            .with_has_header(true)
+            .with_infer_schema_length(Some(0)) // need to read all cols as strings to avoid errors
+            .try_into_reader_with_file_path(Some(path))?
+            .finish()?
+    }};
+}

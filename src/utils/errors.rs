@@ -1,5 +1,5 @@
 // Module containing all the errors that can arise
-use crate::algorithms::raptor::utils::RaptorStopID;
+use crate::algorithms::raptor::types::RaptorStopID;
 use crate::gtfs::datetime::Seconds;
 use crate::utils::files::gtfs::format_missing_gtfs_files;
 use crate::utils::files::gtfs::RequiredGtfsFile;
@@ -7,6 +7,9 @@ use crate::utils::files::gtfs::RequiredGtfsFile;
 use std::io;
 use thiserror::Error;
 
+// TODO: Split this module into sane submodules
+
+// SECTION: INIT ERRORS
 #[derive(Debug, Error)]
 pub enum InitError {
     #[error("IO error: {0}")]
@@ -25,15 +28,19 @@ pub enum InitError {
     OSMError(#[from] OSMErorr),
 }
 
+// SECTION: GEOCODING ERRORS
 #[derive(Debug, Error)]
 pub enum GeocodingError {
     #[error("No input provided'{0}'")]
     NoInput(String),
 
-    #[error("Geocoding failed. Could be because the place you specified is misspelled, is not usable, or is too vague: {0}")]
+    #[error(
+        "Geocoding failed. Could be because the place you specified is misspelled, is not usable, or is too vague: {0}"
+    )]
     GeocodingFailed(String),
 }
 
+// SECTION: GTFS ERRORS
 #[derive(Debug, Error)]
 pub enum GtfsError {
     // NOTE: error message going in impl Display because InvalidGTFS requires string and
@@ -74,8 +81,16 @@ impl From<std::io::Error> for GtfsError {
     }
 }
 
-// OSM SECTION !
+#[derive(Debug, thiserror::Error)]
+pub enum TimeParsingError {
+    #[error("invalid time format '{0}', expected HH:mm:ss")]
+    InvalidFormat(String),
 
+    #[error("invalid {0} component '{1}'")]
+    InvalidComponent(String, String),
+}
+
+// SECTION: OSM ERRORS
 #[derive(Debug, Error)]
 pub enum OSMErorr {
     #[error("No file was found at the path you provided: {0}")]
@@ -91,8 +106,7 @@ pub enum OSMErorr {
     UnknownError(String),
 }
 
-// RAPTOR SECTION !
-
+// SECTION: RAPTOR ERRORS
 #[derive(Debug, Error)]
 pub enum RaptorError {
     #[error("Destination stop is not reachable from origin station")]
@@ -124,4 +138,25 @@ pub enum RaptorError {
 
     #[error("Missing stop at index {0} during timetable construction")]
     MissingStop(usize),
+
+    #[error("Invalid GTFS data: {0}")]
+    InvalidGtfs(String),
+
+    #[error("Time parsing error in stop_times.txt at row {row}: \n {source}")]
+    StopTimeParsingError {
+        row: usize,
+        #[source]
+        source: TimeParsingError,
+    },
+
+    #[error("Failed to parse stop location in stops.txt file at row '{row}' \n {source}")]
+    StopLocationParsingError {
+        lat_or_lon: String,
+        row: usize,
+        #[source]
+        source: std::num::ParseFloatError,
+    },
+
+    #[error("Cache error when trying to build raptor")]
+    CacheError(String),
 }

@@ -1,6 +1,6 @@
 use rayon::prelude::*;
 
-use crate::algorithms::raptor::utils::{
+use crate::algorithms::raptor::types::{
     Journey, Leg, RaptorRouteID, RaptorState, RaptorStopID, RaptorTimetable, INFINITY,
 };
 use crate::gtfs::datetime::Seconds;
@@ -77,6 +77,11 @@ impl Raptor {
     ) -> Result<Journey, RaptorError> {
         let timetable = &self.timetable;
 
+        // short circuit if same origin and destination
+        if origin == destination {
+            return Ok(Journey::new(origin, destination, depart_time, vec![]));
+        }
+
         // collect all stops from the timetable
         let mut state = RaptorState::new(
             origin,
@@ -84,9 +89,21 @@ impl Raptor {
             depart_time,
             timetable.stops.len(),
             max_transfers,
+            0,
         );
 
-        // BUG: Misses first leg because no relaxing transfers for 0th round!
+        // relax transfers from origin before round 1
+        for transfer in &timetable.transfers[origin.id] {
+            let arr = depart_time + transfer.walk_time;
+            let leg = Leg {
+                origin_stop: origin,
+                destination_stop: transfer.to_stop,
+                leg_start_time: depart_time,
+                leg_end_time: arr,
+                trip_id: None,
+            };
+            state.update(1, transfer.to_stop, arr, leg);
+        }
 
         // rounds correlate to adding one new transfer (one new round is one additional transfer)
         // so this is main loop for algorithm
@@ -100,9 +117,9 @@ impl Raptor {
                 .marked_stops
                 .par_iter()
                 .flat_map_iter(|&stop| {
-                    timetable.routes_serving_stop[stop.id]
+                    timetable.routes_serving_stops[stop.id]
                         .iter()
-                        .map(move |&(route_id, stop_idx)| (route_id, stop, stop_idx))
+                        .map(move |route| (route.route_id, stop, route.stop_sequence))
                 })
                 .collect();
 
@@ -113,8 +130,7 @@ impl Raptor {
             state.marked_stops.clear();
 
             // this (RaptorStopID, usize) tuple gives the stop id and it's ordering in the route
-            let mut route_queue: Vec<Option<(RaptorStopID, usize)>> =
-                vec![None; timetable.routes.len()];
+            let mut route_queue: Vec<Option<(RaptorStopID, usize)>> = vec![None; timetable.routes.len()];
             for (route_id, stop, stop_idx) in route_entries {
                 match &route_queue[route_id.id] {
                     Some((_, queued_idx)) if stop_idx >= *queued_idx => {}
@@ -142,9 +158,7 @@ impl Raptor {
                     // only choose to board if new arrival time at that stop is better than
                     // prvioues
                     if prev_arr < INFINITY {
-                        if let Some(trip_idx) =
-                            timetable.earliest_trip(route_id, stop_idx, prev_arr)
-                        {
+                        if let Some(trip_idx) = timetable.earliest_trip(route_id, stop_idx, prev_arr) {
                             let is_earlier = current_trip.map_or(true, |current| {
                                 timetable.get_departure_time(route_id, trip_idx, stop_idx)
                                     < timetable.get_departure_time(route_id, current, stop_idx)

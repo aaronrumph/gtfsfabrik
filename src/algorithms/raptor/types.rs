@@ -118,8 +118,8 @@ impl RaptorTimetable {
         let route = self.routes.get(route_id.id)?;
         route
             .trips
-            .par_iter()
-            .position_first(|trip| trip.stop_times[stop_idx].departure >= earliest_departure)
+            .iter()
+            .position(|trip| trip.stop_times[stop_idx].departure >= earliest_departure)
     }
 
     // Takes gets the earliest arrival for a given route for a given trip for a given stop (as
@@ -304,6 +304,7 @@ impl RaptorState {
 
 // SECTION: RaptorGtfsFeed
 
+#[derive(Clone)]
 pub struct RaptorGtfsFeed {
     pub routes: DataFrame,
     pub trips: DataFrame,

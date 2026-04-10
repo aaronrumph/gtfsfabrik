@@ -1,5 +1,7 @@
 # Init Command
 
+--- 
+
 The init command is the first step in using gtfsfabrik. Running 'gtfsfabrik init'
 will create a new fabrik for you to work in! You **must** provide a path as an argument
 when you use the init command, but all other arguments are optional. Supports

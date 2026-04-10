@@ -7,12 +7,13 @@ use crate::gtfs::datetime::Seconds;
 use crate::utils::errors::RaptorError;
 
 // Raptor!
-pub struct Raptor {
+#[derive(Debug, Clone)]
+pub struct SimpleRaptor {
     pub timetable: RaptorTimetable,
     // TODO: initialize RaptorState here?
 }
 
-impl Raptor {
+impl SimpleRaptor {
     pub fn new(timetable: RaptorTimetable) -> Self {
         Self { timetable }
     }

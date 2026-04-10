@@ -6,8 +6,10 @@ use crate::{
     algorithms::raptor::{
         cache::RaptorCache,
         gtfs_loader::{build_timetable, load_gtfs, map_ids},
+        simple_raptor::SimpleRaptor,
         types::{IdMap, RaptorTimetable},
     },
+    gtfs::datetime::Seconds,
     utils::errors::RaptorError,
 };
 
@@ -71,5 +73,34 @@ impl Raptor {
     pub fn new(gtfs_dir: &str) -> Result<Self, RaptorError> {
         let cache = RaptorCache::default()?;
         Self::build(gtfs_dir, cache, true)
+    }
+
+    /// Simple travel time query for RAPTOR. Takes origin_stop and destination_stop as
+    /// gtfs_ids and returns just the travel time between them
+    pub fn travel_time(
+        &self,
+        origin_stop: &str,
+        destination_stop: &str,
+        depart_time: Seconds,
+        max_transfers: usize,
+    ) -> Result<Seconds, RaptorError> {
+        let origin = *self
+            .id_map
+            .stops
+            .get(origin_stop)
+            .ok_or_else(|| RaptorError::InvalidGtfs(format!("Unknown stop {}", origin_stop)))?;
+
+        let destination = *self
+            .id_map
+            .stops
+            .get(destination_stop)
+            .ok_or_else(|| RaptorError::InvalidGtfs(format!("Unknown stop {}", destination_stop)))?;
+
+        // travel time uses just the simple raptor function
+        let raptor = SimpleRaptor::new(self.timetable.clone());
+
+        let journey = raptor.query(origin, destination, depart_time, max_transfers)?;
+
+        Ok(journey.arrival_time() - depart_time)
     }
 }

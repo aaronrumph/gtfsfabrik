@@ -79,6 +79,7 @@ pub fn build_stops(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result<Vec<RaptorSt
         .ok()
         .and_then(|s| s.str().ok());
 
+    // reserving capacity in advance because fixed size
     let mut stops: Vec<Option<RaptorStop>> = vec![None; id_map.stops.len()];
 
     for (idx, id) in gtfs_stop_ids.into_iter().enumerate() {
@@ -87,7 +88,7 @@ pub fn build_stops(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result<Vec<RaptorSt
         let name = stop_names
             .as_ref()
             .and_then(|names| names.get(idx))
-            .unwrap_or(gtfs_id)
+            .unwrap_or(gtfs_id) // FIX: get rid of unwrap SHOULD NEVER ERROR
             .to_string();
         stops[raptor_id.id] = Some(RaptorStop {
             stop_id: raptor_id,
@@ -95,15 +96,14 @@ pub fn build_stops(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result<Vec<RaptorSt
         });
     }
 
+    // collecting stops into array of stops
+    // OPTIM: Change to ArrayVec to avoid allocation?
     stops
         .into_iter()
         .enumerate()
         .map(|(idx, stop)| stop.ok_or(RaptorError::MissingStop(idx)))
         .collect()
 }
-
-// TODO: build_routes function to build routes and trips for raptor
-// TODO: build_timetable function to build RaptorTimetable
 
 // TODO: raptor_query function that wraps loader and simple raptor to give travel time
 // TODO: itinerary function that wraps ... and returns full travel directions
@@ -133,7 +133,6 @@ pub fn build_stop_times_by_trip(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result
     // tuple with (sequence, stop_id, arrival_time, departure_time)
     let mut stop_times_by_trip_id: StopTimesByTrip = HashMap::new();
 
-    // TODO: Use rayon on the building of the tuples and then move into a Hashmap after
     // NOTE: looks weird to use stop_time_trip_ids iterator to get all the stuff necessary to build the tuple, but
     // because they are all columns from same stop_times.txt, this is the same as going row by row,
     // but avoids weird polars type issues I encountered
@@ -198,7 +197,7 @@ pub fn build_stop_times_by_trip(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result
                 gtfs_time_to_seconds(time).map_err(|e| RaptorError::StopTimeParsingError { row: idx, source: e })?
             }
             None => {
-                let error_msg = format!("Missing arrival time in stop_times.txt for row {}", idx);
+                let error_msg = format!("Missing departure time in stop_times.txt for row {}", idx);
                 return Err(RaptorError::InvalidGtfs(error_msg));
             }
         };
@@ -245,6 +244,9 @@ pub fn build_routes(
     // returns result, if Ok(...) then returns tuple of 0: routes and 1:
     // routes_serving_stops for timetable building
 
+    // BUG: Assumes that all trips with the same route_id have the same stop sequence. not
+    // necessarily true! Short turn routes/etc which are marked as being under the same route to
+    // customer have have same route_id
     // NOTE: assumes that if arrival time for one route is earlier than another, than its departure
     // time is too
 
@@ -297,6 +299,7 @@ pub fn build_routes(
 
     // grouping trips by the route they serve to build routes
     let mut trips_by_route: HashMap<RaptorRouteID, Vec<RaptorTripID>> = HashMap::new();
+
     for (trip_id, route_id) in &trip_route_map {
         // check if route_id already in hashmap, if not add it
         let trip_list = trips_by_route.entry(*route_id).or_default();

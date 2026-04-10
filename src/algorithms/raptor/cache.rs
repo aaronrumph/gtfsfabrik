@@ -13,10 +13,11 @@ use crate::{
 };
 
 use polars::prelude::*;
-use rkyv::{deserialize, rancor::Error};
+use rkyv::{deserialize, rancor::Error, Serialize};
 use std::{fs::File, path::PathBuf};
 use xxhash_rust::{xxh3::xxh3_64, xxh64::Xxh64};
 
+#[derive(Clone, Debug)]
 pub struct RaptorCache {
     pub cache_dir: PathBuf,
 }

@@ -302,6 +302,15 @@ impl RaptorState {
     }
 }
 
+// SECTION: RaptorQueryResult
+
+#[derive(Clone, Debug, Archive, Serialize, Deserialize)]
+pub struct RaptorQueryResult {
+    pub earliest_arrival_time: Seconds,
+    pub travel_time: Seconds,
+    pub diary: Option<Journey>,
+}
+
 // SECTION: RaptorGtfsFeed
 
 #[derive(Clone)]
@@ -330,7 +339,7 @@ impl RaptorGtfsFeed {
                     return Err(RaptorError::InvalidGtfs(format!(
                         "missing stop_id in stops.txt at row {}",
                         idx
-                    )))
+                    )));
                 }
             };
             let stop_id = match id_map.stops.get(gtfs_stop_id) {

@@ -1,8 +1,8 @@
 // Module containing all the errors that can arise
 use crate::algorithms::raptor::types::RaptorStopID;
 use crate::gtfs::datetime::Seconds;
-use crate::utils::files::gtfs::format_missing_gtfs_files;
 use crate::utils::files::gtfs::RequiredGtfsFile;
+use crate::utils::files::gtfs::format_missing_gtfs_files;
 
 use std::io;
 use thiserror::Error;
@@ -57,19 +57,23 @@ impl std::fmt::Display for GtfsError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             GtfsError::NotFound(path) => write!(f, "Path not found for path: '{}'", path),
-            GtfsError::NotAZip(path) => write!(
-                f,
-                "The path you provided was a file, but not a zip file!: '{}'",
-                path
-            ),
+            GtfsError::NotAZip(path) => write!(f, "The path you provided was a file, but not a zip file!: '{}'", path),
             GtfsError::InvalidGTFS(path, missing) => write!(
                 f,
                 "The GTFS feed at '{}' is missing the following REQUIRED files: {}",
                 path,
                 format_missing_gtfs_files(missing)
             ),
-            GtfsError::IoError(path) => write!(f, "An IO error occured with '{}' Maybe try checking file permissions or submitting a bug report", path),
-            GtfsError::Other(path) => write!(f, "The provided path is not a GTFS folder or zipfile!: '{}' . Submit a bug report if you believe this is incorrect", path)
+            GtfsError::IoError(path) => write!(
+                f,
+                "An IO error occured with '{}' Maybe try checking file permissions or submitting a bug report",
+                path
+            ),
+            GtfsError::Other(path) => write!(
+                f,
+                "The provided path is not a GTFS folder or zipfile!: '{}' . Submit a bug report if you believe this is incorrect",
+                path
+            ),
         }
     }
 }

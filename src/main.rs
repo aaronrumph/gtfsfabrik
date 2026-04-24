@@ -4,6 +4,7 @@ pub mod commands;
 pub mod gtfs;
 pub mod utils;
 
+use algorithms::raptor::api::Raptor;
 use utils::geotypes::GeoScope;
 use utils::logging::*;
 
@@ -109,8 +110,7 @@ fn main() {
         } => {
             // TODO: add error handling for no path
             // BUG: will panic if no path provided. Give user error message
-            let input_path = path
-                .expect("ERROR: You must provide a path for the fabrik! Could not create fabrik");
+            let input_path = path.expect("ERROR: You must provide a path for the fabrik! Could not create fabrik");
             // TODO: change from unwrap for safety once know
             // commands work
 
@@ -128,13 +128,11 @@ fn main() {
 
             match commands::init::init_fabrik(options) {
                 Ok(_) => {
-                    let init_success_message =
-                        &format!("Successfully created a new fabrik at {}", path_copy);
+                    let init_success_message = &format!("Successfully created a new fabrik at {}", path_copy);
                     print_success(init_success_message);
                 }
                 Err(e) => {
-                    let init_error_message =
-                        &format!("Couldn't create a new fabrik at {}.\n{}", path_copy, e);
+                    let init_error_message = &format!("Couldn't create a new fabrik at {}.\n{}", path_copy, e);
                     print_error(init_error_message);
                 }
             }

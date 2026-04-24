@@ -161,6 +161,9 @@ pub enum RaptorError {
         source: std::num::ParseFloatError,
     },
 
-    #[error("Cache error when trying to build raptor")]
+    #[error("Cache error when trying to build raptor: {0}")]
     CacheError(String),
+
+    #[error("Some unknown error occured {0}")]
+    UnknownError(String),
 }

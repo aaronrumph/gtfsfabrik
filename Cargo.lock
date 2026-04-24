@@ -1279,6 +1279,7 @@ dependencies = [
  "dirs",
  "geo",
  "polars",
+ "rand 0.8.5",
  "rayon",
  "reqwest 0.13.2",
  "rkyv",

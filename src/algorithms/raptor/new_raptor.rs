@@ -24,6 +24,9 @@ pub struct RaptorHandler {
     // tau_best[stop] keeps track of the earliest arrival time in any round
     tau_best: Vec<Seconds>,
 
+    // best_round[stop] is the round where tau_best[stop] was achieved
+    best_round: Vec<Option<usize>>,
+
     // true at index if that stop_id has been marked this round
     marked_prev: Vec<bool>,
     marked_current: Vec<bool>,
@@ -54,6 +57,7 @@ impl RaptorHandler {
         let tau_prev = vec![INFINITY; num_stops];
         let tau_current = vec![INFINITY; num_stops];
         let tau_best = vec![INFINITY; num_stops];
+        let best_round = vec![None; num_stops];
 
         // no marked stops to start
         let marked_prev = vec![false; num_stops];
@@ -66,6 +70,7 @@ impl RaptorHandler {
             tau_prev,
             tau_current,
             tau_best,
+            best_round,
             marked_prev,
             marked_current,
             marked_stops_prev: vec![],
@@ -80,6 +85,7 @@ impl RaptorHandler {
         self.tau_prev.fill(INFINITY);
         self.tau_current.fill(INFINITY);
         self.tau_best.fill(INFINITY);
+        self.best_round.fill(None);
 
         self.marked_prev.fill(false);
         self.marked_current.fill(false);
@@ -118,6 +124,7 @@ impl RaptorHandler {
 
         self.tau_current[origin.id] = departure_time;
         self.tau_best[origin.id] = departure_time;
+        self.best_round[origin.id] = Some(0);
 
         // for each nearby stop mark earliest arrival time as depart + transfer time
         for transfer in self.timetable.transfers[origin.id].iter() {
@@ -126,6 +133,7 @@ impl RaptorHandler {
 
             self.tau_current[transfer_dest_id.id] = arrival_time;
             self.tau_best[transfer_dest_id.id] = arrival_time;
+            self.best_round[transfer_dest_id.id] = Some(0);
 
             // adding 0th round leg info so that can see initial walk to stop
             self.parent_leg[0][transfer_dest_id.id] = Some(Leg {
@@ -176,6 +184,7 @@ impl RaptorHandler {
             destination: RaptorStopID,
             departure_time: Seconds,
             raptor_handler: &RaptorHandler,
+            round: usize,
         ) -> Result<RaptorQueryResult, RaptorError> {
             // easy part; check tau_best for arrival time
             let earliest_arrival_time = match raptor_handler.tau_best[destination.id] {
@@ -192,11 +201,47 @@ impl RaptorHandler {
             let travel_time = earliest_arrival_time - departure_time;
 
             // TODO: Diary construction!!!
+            let mut legs = Vec::new();
+            let mut current_stop = destination;
+            let mut current_round = round;
+
+            // backtracking to create trip diary
+            while current_stop != origin {
+                let leg = match raptor_handler.parent_leg[current_round][current_stop.id] {
+                    Some(some_leg) => some_leg,
+                    None => {
+                        let error_msg = format!("Missing leg for stop {:?} in round {}", current_stop, current_round);
+                        return Err(RaptorError::UnknownError(error_msg));
+                    }
+                };
+
+                // update to next stop along backtrack
+                current_stop = leg.origin_stop;
+                legs.push(leg);
+
+                // walking legs can happen in same round as transit so only go to next
+                // round after transit
+                let is_transit_leg = leg.trip_id.is_some();
+                if is_transit_leg {
+                    if current_round == 0 {
+                        break;
+                    }
+                    current_round -= 1;
+                }
+            }
+
+            // since made through backtracking, in reverse order currently
+            legs.reverse();
 
             Ok(RaptorQueryResult {
                 earliest_arrival_time,
                 travel_time,
-                diary: None,
+                diary: Some(Journey {
+                    origin,
+                    destination,
+                    departure_time,
+                    legs,
+                }),
             })
         }
 
@@ -204,7 +249,7 @@ impl RaptorHandler {
         let mut query_round = match increment_round(0, max_boardings, self) {
             // returns None if need to short circuit
             Some(round) => round,
-            None => return best_so_far(origin, destination, departure_time, self),
+            None => return best_so_far(origin, destination, departure_time, self, 0),
         };
 
         while query_round <= max_boardings {
@@ -256,6 +301,7 @@ impl RaptorHandler {
                         if arrival_time < self.tau_best[stop_id.id] {
                             self.tau_current[stop_id.id] = arrival_time;
                             self.tau_best[stop_id.id] = arrival_time;
+                            self.best_round[stop_id.id] = Some(query_round);
 
                             // need to mark down leg info once updated best arrival time for stop
                             if let Some(board_seq) = boarded_at_stop_sequence {
@@ -310,20 +356,24 @@ impl RaptorHandler {
                     // same as initialization round // TODO: make into reusable function??
                     if arrival_time < self.tau_current[transfer_dest_id.id] {
                         self.tau_current[transfer_dest_id.id] = arrival_time;
-                        self.tau_best[transfer_dest_id.id] = self.tau_best[transfer_dest_id.id].min(arrival_time);
 
-                        self.parent_leg[query_round][transfer_dest_id.id] = Some(Leg {
-                            origin_stop: *stop_id,
-                            destination_stop: transfer_dest_id,
-                            leg_start_time: self.tau_current[stop_id.id],
-                            leg_end_time: arrival_time,
-                            trip_id: None, // cuz walking
-                        });
+                        if arrival_time < self.tau_best[transfer_dest_id.id] {
+                            self.tau_best[transfer_dest_id.id] = arrival_time;
+                            self.best_round[transfer_dest_id.id] = Some(query_round);
+
+                            // for diary
+                            self.parent_leg[query_round][transfer_dest_id.id] = Some(Leg {
+                                origin_stop: *stop_id,
+                                destination_stop: transfer_dest_id,
+                                leg_start_time: self.tau_current[stop_id.id],
+                                leg_end_time: arrival_time,
+                                trip_id: None, // cuz walking
+                            });
+                        }
 
                         // again avoiding duplication
                         if !self.marked_current[transfer_dest_id.id] {
                             self.marked_current[transfer_dest_id.id] = true;
-                            self.marked_stops_current.push(transfer_dest_id);
                         }
                     }
                 }
@@ -341,6 +391,13 @@ impl RaptorHandler {
             };
         }
 
-        best_so_far(origin, destination, departure_time, self)
+        // returning the best round!
+        let best_round = self.best_round[destination.id].ok_or(RaptorError::DestinationUnreachable {
+            origin,
+            destination,
+            departure_time,
+        })?;
+
+        best_so_far(origin, destination, departure_time, self, best_round)
     }
 }

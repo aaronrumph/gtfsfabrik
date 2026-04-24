@@ -71,7 +71,7 @@ pub struct RaptorTrip {
 
 #[derive(Debug, Archive, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct RaptorRoute {
-    pub route_id: RaptorRouteID,
+    pub route_id: TimetableRouteID,
     pub stops: Vec<RaptorStopID>, // NOTE: Stops must be in sequential order along route
     pub trips: Vec<RaptorTrip>,   // NOTE: Trips must be in sequential order by depart time
 }
@@ -85,7 +85,7 @@ pub struct RaptorTransfer {
 // NOTE: might want to change to CSR to avoid vector of vectors problems
 #[derive(Debug, Archive, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RaptorRouteServingStop {
-    pub route_id: RaptorRouteID,
+    pub route_id: TimetableRouteID,
     pub stop_sequence: usize,
 }
 
@@ -111,7 +111,7 @@ impl RaptorTimetable {
     /// departure_time
     pub fn earliest_trip(
         &self,
-        route_id: RaptorRouteID,
+        route_id: TimetableRouteID,
         stop_idx: usize, // stop_idx is which the order/sequence of stop in route
         earliest_departure: Seconds,
     ) -> Option<usize> {
@@ -124,11 +124,11 @@ impl RaptorTimetable {
 
     // Takes gets the earliest arrival for a given route for a given trip for a given stop (as
     // given by stop sequence position)
-    pub fn get_arrival_time(&self, route_id: RaptorRouteID, trip_idx: usize, stop_idx: usize) -> Seconds {
+    pub fn get_arrival_time(&self, route_id: TimetableRouteID, trip_idx: usize, stop_idx: usize) -> Seconds {
         self.routes[route_id.id].trips[trip_idx].stop_times[stop_idx].arrival
     }
 
-    pub fn get_departure_time(&self, route_id: RaptorRouteID, trip_idx: usize, stop_idx: usize) -> Seconds {
+    pub fn get_departure_time(&self, route_id: TimetableRouteID, trip_idx: usize, stop_idx: usize) -> Seconds {
         self.routes[route_id.id].trips[trip_idx].stop_times[stop_idx].departure
     }
 }
@@ -454,5 +454,18 @@ impl ReverseIdMap {
                 Err(RaptorError::InvalidGtfs(error_msg))
             }
         }
+    }
+}
+
+// SECTION: TimeTableRouteID
+
+#[derive(Debug, Archive, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TimetableRouteID {
+    pub id: usize,
+}
+
+impl TimetableRouteID {
+    pub fn new(id: usize) -> Self {
+        Self { id }
     }
 }

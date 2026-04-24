@@ -13,7 +13,7 @@ use crate::{
 };
 
 use polars::prelude::*;
-use rkyv::{deserialize, rancor::Error, Serialize};
+use rkyv::{Serialize, deserialize, rancor::Error};
 use std::{fs::File, path::PathBuf};
 use xxhash_rust::{xxh3::xxh3_64, xxh64::Xxh64};
 
@@ -87,6 +87,8 @@ impl RaptorCache {
         let three_quartile_arrival_time = arrival_times.get(3 * num_stop_times / 4).unwrap_or("");
         let one_third_arrival_time = arrival_times.get(num_stop_times / 3).unwrap_or("");
 
+        // using Xxh64 as hashing algorithm because 64 bits should be enough to avoid collisions
+        // and is reasonably quick
         let mut hasher = Xxh64::new(0);
 
         // idk the difference between to_le_bytes and as_bytes but compiler told me to do it

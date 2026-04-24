@@ -1,13 +1,11 @@
 // This module contains some wrapper functions/structs to provide an API to call RAPTOR with
-
-use std::path::PathBuf;
-
 use crate::{
     algorithms::raptor::{
         cache::RaptorCache,
         gtfs_loader::{build_timetable, load_gtfs, map_ids},
+        new_raptor::RaptorHandler,
         simple_raptor::SimpleRaptor,
-        types::{IdMap, RaptorTimetable},
+        types::{IdMap, Journey, RaptorQueryResult, RaptorTimetable},
     },
     gtfs::datetime::Seconds,
     utils::errors::RaptorError,
@@ -18,6 +16,7 @@ pub struct Raptor {
     cache: RaptorCache,
     timetable: RaptorTimetable,
     id_map: IdMap,
+    raptor_handler: Option<RaptorHandler>, // this way can reuse simple raptor obj
 }
 
 impl Raptor {
@@ -41,6 +40,7 @@ impl Raptor {
                 cache,
                 timetable,
                 id_map,
+                raptor_handler: None, // None until first (simple) query, then initializes
             });
         }
 
@@ -51,6 +51,7 @@ impl Raptor {
                 cache,
                 timetable: cached_timetable,
                 id_map: cached_id_map,
+                raptor_handler: None,
             }),
             // TODO: Better error handling here for cache failures
             Err(_) => {
@@ -64,6 +65,7 @@ impl Raptor {
                     cache,
                     timetable,
                     id_map,
+                    raptor_handler: None,
                 })
             }
         }
@@ -75,15 +77,18 @@ impl Raptor {
         Self::build(gtfs_dir, cache, true)
     }
 
+    // TODO: Add gtfs name support instead of just ids!
+
     /// Simple travel time query for RAPTOR. Takes origin_stop and destination_stop as
     /// gtfs_ids and returns just the travel time between them
     pub fn travel_time(
-        &self,
-        origin_stop: &str,
-        destination_stop: &str,
+        &mut self,
+        origin_stop: &str,      // gtfs id
+        destination_stop: &str, // gtfs id
         depart_time: Seconds,
         max_transfers: usize,
     ) -> Result<Seconds, RaptorError> {
+        // error handling for origin and destination first to make sure valid gtfs ids
         let origin = *self
             .id_map
             .stops
@@ -96,11 +101,55 @@ impl Raptor {
             .get(destination_stop)
             .ok_or_else(|| RaptorError::InvalidGtfs(format!("Unknown stop {}", destination_stop)))?;
 
-        // travel time uses just the simple raptor function
-        let raptor = SimpleRaptor::new(self.timetable.clone());
+        // check if there's already a RaptorHandler obj, if not add it
+        if self.raptor_handler.is_none() {
+            self.raptor_handler = Some(RaptorHandler::new(self.timetable.clone()))
+        }
 
-        let journey = raptor.query(origin, destination, depart_time, max_transfers)?;
+        let unwrapped_handler = self
+            .raptor_handler
+            .as_mut()
+            .expect("There should be a raptor handler by this point");
 
-        Ok(journey.arrival_time() - depart_time)
+        let query_result = unwrapped_handler.query(origin, destination, depart_time, Some(max_transfers))?;
+
+        Ok(query_result.travel_time)
+    }
+
+    // TODO: write trip diary function
+    pub fn trip_details(
+        &mut self,
+        origin_stop: &str,      // gtfs id
+        destination_stop: &str, // gtfs id
+        depart_time: Seconds,
+        max_transfers: usize,
+    ) -> Result<Journey, RaptorError> {
+        // error handling for origin and destination first to make sure valid gtfs ids
+        let origin = *self
+            .id_map
+            .stops
+            .get(origin_stop)
+            .ok_or_else(|| RaptorError::InvalidGtfs(format!("Unknown stop {}", origin_stop)))?;
+
+        let destination = *self
+            .id_map
+            .stops
+            .get(destination_stop)
+            .ok_or_else(|| RaptorError::InvalidGtfs(format!("Unknown stop {}", destination_stop)))?;
+
+        // check if there's already a RaptorHandler obj, if not add it
+        if self.raptor_handler.is_none() {
+            self.raptor_handler = Some(RaptorHandler::new(self.timetable.clone()))
+        }
+
+        let unwrapped_handler = self
+            .raptor_handler
+            .as_mut()
+            .expect("There should be a raptor handler by this point");
+
+        let query_result: RaptorQueryResult =
+            unwrapped_handler.query(origin, destination, depart_time, Some(max_transfers))?;
+
+        Ok(query_result.diary.expect("Expected a valid trip diary"))
     }
 }

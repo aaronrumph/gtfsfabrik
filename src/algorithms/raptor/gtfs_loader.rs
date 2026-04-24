@@ -3,9 +3,9 @@
 use crate::algorithms::raptor::transfers::calculate_naive_transfers;
 use crate::algorithms::raptor::types::{
     IdMap, RaptorGtfsFeed, RaptorRoute, RaptorRouteID, RaptorRouteServingStop, RaptorStop, RaptorStopID,
-    RaptorStopTime, RaptorTimetable, RaptorTransfer, RaptorTrip, RaptorTripID, RoutesServingStop,
+    RaptorStopTime, RaptorTimetable, RaptorTransfer, RaptorTrip, RaptorTripID, RoutesServingStop, TimetableRouteID,
 };
-use crate::gtfs::datetime::{gtfs_time_to_seconds, Seconds};
+use crate::gtfs::datetime::{Seconds, gtfs_time_to_seconds};
 use crate::read_gtfs;
 use crate::utils::errors::RaptorError;
 use crate::utils::files::gtfs::{GtfsFiles, RouteColumns, StopColumns, StopTimesColumns, TripColumns};
@@ -32,6 +32,8 @@ pub fn load_gtfs(feed_dir: &str) -> Result<RaptorGtfsFeed, RaptorError> {
 
 // This function maps GTFS ids to dense int ids to use for Raptor for stops, trips, and routes
 pub fn map_ids(feed: &RaptorGtfsFeed) -> Result<IdMap, RaptorError> {
+    // TODO: Change this into vec of tuples?
+
     // these maps translate between the gtfs ids and the int ids
     let mut routes: HashMap<String, RaptorRouteID> = HashMap::new();
     let mut trips: HashMap<String, RaptorTripID> = HashMap::new();
@@ -77,7 +79,7 @@ pub fn build_stops(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result<Vec<RaptorSt
         .stops
         .column(&StopColumns::Name.to_string())
         .ok()
-        .and_then(|s| s.str().ok());
+        .and_then(|stop_name| stop_name.str().ok());
 
     // reserving capacity in advance because fixed size
     let mut stops: Vec<Option<RaptorStop>> = vec![None; id_map.stops.len()];
@@ -85,11 +87,17 @@ pub fn build_stops(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result<Vec<RaptorSt
     for (idx, id) in gtfs_stop_ids.into_iter().enumerate() {
         let Some(gtfs_id) = id else { continue };
         let raptor_id = id_map.stops[gtfs_id];
-        let name = stop_names
-            .as_ref()
-            .and_then(|names| names.get(idx))
-            .unwrap_or(gtfs_id) // FIX: get rid of unwrap SHOULD NEVER ERROR
-            .to_string();
+        let name = stop_names.as_ref().and_then(|names| names.get(idx));
+
+        // have to check that option is not none to satisfy compiler, but this should never error
+        let name = match name {
+            Some(stop_name) => stop_name.to_string(),
+            None => panic!(
+                "There's something weird happening with stop names in gtfs id '{}'",
+                gtfs_id
+            ),
+        };
+
         stops[raptor_id.id] = Some(RaptorStop {
             stop_id: raptor_id,
             name,
@@ -110,6 +118,9 @@ pub fn build_stops(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result<Vec<RaptorSt
 
 // tuple with (sequence, stop_id, arrival_time, departure_time)
 type StopTimesByTrip = HashMap<RaptorTripID, Vec<(usize, RaptorStopID, Seconds, Seconds)>>;
+// tuple with GTFS route ID and stop order because routes not necessarily different stopping
+// patterns in GTFS
+type RoutePatternKey = (RaptorRouteID, Vec<RaptorStopID>);
 
 pub fn build_stop_times_by_trip(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result<StopTimesByTrip, RaptorError> {
     // most of the useful information for RAPTOR comes from stop times, so getting useful columns
@@ -135,16 +146,17 @@ pub fn build_stop_times_by_trip(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result
 
     // NOTE: looks weird to use stop_time_trip_ids iterator to get all the stuff necessary to build the tuple, but
     // because they are all columns from same stop_times.txt, this is the same as going row by row,
-    // but avoids weird polars type issues I encountered
+    // but avoids weird polars type issues I encountered iterating through rows directly
     for idx in 0..stop_time_trip_ids.len() {
-        // collecting trip_id, (sequence...) to build the hashmap above
+        // collecting trip_id, (sequence...) to build the hashmap above (IDX ends up serving as
+        // dense trip IDs)
         let gtfs_trip_id = match stop_time_trip_ids.get(idx) {
             Some(id) => id,
             None => {
                 return Err(RaptorError::InvalidGtfs(format!(
                     "missing trip_id in stop_times.txt at row {}",
                     idx
-                )))
+                )));
             }
         };
 
@@ -154,7 +166,7 @@ pub fn build_stop_times_by_trip(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result
                 return Err(RaptorError::InvalidGtfs(format!(
                     "missing stop_id in stop_times.txt at row {}",
                     idx
-                )))
+                )));
             }
         };
 
@@ -164,7 +176,7 @@ pub fn build_stop_times_by_trip(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result
                 return Err(RaptorError::InvalidGtfs(format!(
                     "trip_id '{}' in stop_times.txt not found in trips.txt",
                     gtfs_trip_id
-                )))
+                )));
             }
         };
 
@@ -174,7 +186,7 @@ pub fn build_stop_times_by_trip(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result
                 return Err(RaptorError::InvalidGtfs(format!(
                     "stop_id '{}' in stop_times.txt not found in stops.txt",
                     gtfs_stop_id
-                )))
+                )));
             }
         };
 
@@ -214,7 +226,7 @@ pub fn build_stop_times_by_trip(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result
                 return Err(RaptorError::InvalidGtfs(format!(
                     "missing stop_sequence in stop_times.txt at row {}",
                     idx
-                )))
+                )));
             }
         };
 
@@ -253,7 +265,7 @@ pub fn build_routes(
     // need to map all trips to the route they follow
     let trip_ids_col = feed.trips.column(&TripColumns::TripID.to_string())?.str()?;
     let route_ids_col = feed.trips.column(&TripColumns::RouteID.to_string())?.str()?;
-    let mut trip_route_map: HashMap<RaptorTripID, RaptorRouteID> = HashMap::new();
+    let mut trip_gtfs_route_map: HashMap<RaptorTripID, RaptorRouteID> = HashMap::new();
     for idx in 0..trip_ids_col.len() {
         // need to check whether all trips have ids for raptor to work
         let trip_id = match trip_ids_col.get(idx) {
@@ -278,7 +290,7 @@ pub fn build_routes(
                 return Err(RaptorError::InvalidGtfs(format!(
                     "Missing trip_id in trips.txt for row {}",
                     idx
-                )))
+                )));
             }
         };
         let raptor_route_id = match id_map.routes.get(route_id) {
@@ -287,23 +299,36 @@ pub fn build_routes(
                 return Err(RaptorError::InvalidGtfs(format!(
                     "Missing route_id in trips.txt for row {}",
                     idx
-                )))
+                )));
             }
         };
 
-        trip_route_map.insert(raptor_trip_id, raptor_route_id);
+        trip_gtfs_route_map.insert(raptor_trip_id, raptor_route_id);
     }
 
     // next building routes using stop_times and trip info
     let stop_times_by_trip_id = build_stop_times_by_trip(feed, id_map)?;
 
     // grouping trips by the route they serve to build routes
-    let mut trips_by_route: HashMap<RaptorRouteID, Vec<RaptorTripID>> = HashMap::new();
+    let mut trips_by_pattern: HashMap<RoutePatternKey, Vec<RaptorTripID>> = HashMap::new();
 
-    for (trip_id, route_id) in &trip_route_map {
-        // check if route_id already in hashmap, if not add it
-        let trip_list = trips_by_route.entry(*route_id).or_default();
-        // then add the trip_id to the vector
+    for (trip_id, route_id) in &trip_gtfs_route_map {
+        let times_for_trip = match stop_times_by_trip_id.get(trip_id) {
+            Some(trip) => trip,
+            None => {
+                let error_msg = format!(
+                    "trip_id '{:?}' in trips.txt has no stop times in stop_times.txt",
+                    trip_id
+                );
+                return Err(RaptorError::InvalidGtfs(error_msg));
+            }
+        };
+
+        // get unique stopping patterns into list as routes
+        let stop_pattern = times_for_trip.iter().map(|(_, stop_id, _, _)| *stop_id).collect();
+
+        // then add trip to vector
+        let trip_list = trips_by_pattern.entry((*route_id, stop_pattern)).or_default();
         trip_list.push(*trip_id);
     }
 
@@ -313,31 +338,11 @@ pub fn build_routes(
     let mut routes_serving_stops: Vec<RoutesServingStop> = vec![Vec::new(); num_stops];
     let mut route_idx = 0usize;
 
-    for (_gtfs_route_id, trip_ids_this_route) in &trips_by_route {
-        // all trips on the same route have same stop seq, so using first trip to get stop order
-        let first_trip_id = match trip_ids_this_route.first() {
-            Some(trip) => trip,
-            None => continue,
-        };
-        let stop_sequence = match stop_times_by_trip_id.get(first_trip_id) {
-            Some(trip) => trip,
-            None => continue,
-        };
-
+    for ((_gtfs_route_id, pattern_stops), trip_ids_this_route) in &trips_by_pattern {
         // building the sequenced list of stops this route serves
-        let mut route_stops: Vec<RaptorStopID> = Vec::new();
-        for (_sequence, stop_id, _arrival, _departure) in stop_sequence {
-            route_stops.push(*stop_id);
-        }
+        let route_stops: Vec<RaptorStopID> = pattern_stops.clone();
         if route_stops.is_empty() {
-            // ignore this route if no stops (can be unused route)
             continue;
-        }
-
-        // index for quickly finding a stop's position in this route
-        let mut stop_positions: HashMap<RaptorStopID, usize> = HashMap::new();
-        for (position, stop_id) in route_stops.iter().enumerate() {
-            stop_positions.insert(*stop_id, position);
         }
 
         // now need to build a RaptorTrip obj for each trip for this route
@@ -354,36 +359,33 @@ pub fn build_routes(
                 }
             };
 
-            // order stop times for this trip by arrival times
-            let mut ordered_times_for_trip: Vec<RaptorStopTime> = vec![
-                RaptorStopTime {
-                    arrival: 0,
-                    departure: 0
-                };
-                route_stops.len()
-            ];
+            // build stop-times position-by-position.
+            // this works even if the same stop appears multiple times in the pattern.
+            if times_for_trip.len() != route_stops.len() {
+                return Err(RaptorError::InvalidGtfs(format!(
+                    "trip '{:?}' length {} does not match route pattern length {}",
+                    trip_id,
+                    times_for_trip.len(),
+                    route_stops.len()
+                )));
+            }
 
-            // simple sorting by iterating over position
-            for (_position, stop_id, arrival_time, departure_time) in times_for_trip {
-                match stop_positions.get(stop_id) {
-                    Some(position) => {
-                        ordered_times_for_trip[*position] = RaptorStopTime {
-                            arrival: *arrival_time,
-                            departure: *departure_time,
-                        };
-                    }
+            let mut ordered_times_for_trip: Vec<RaptorStopTime> = Vec::with_capacity(route_stops.len());
 
-                    // erroring on no stop times
-                    // BUG: Assumes that arrival/departure times are required even though only
-                    // conditionally required
-                    None => {
-                        let error_msg = format!(
-                            "stop '{:?}' in trip '{:?}' stop_times not found in route stop sequence",
-                            stop_id, trip_id
-                        );
-                        return Err(RaptorError::InvalidGtfs(error_msg));
-                    }
+            for (position, ((_, stop_id, arrival_time, departure_time), expected_stop_id)) in
+                times_for_trip.iter().zip(route_stops.iter()).enumerate()
+            {
+                if stop_id != expected_stop_id {
+                    return Err(RaptorError::InvalidGtfs(format!(
+                        "trip '{:?}' stop mismatch at pattern position {}: got '{:?}', expected '{:?}'",
+                        trip_id, position, stop_id, expected_stop_id
+                    )));
                 }
+
+                ordered_times_for_trip.push(RaptorStopTime {
+                    arrival: *arrival_time,
+                    departure: *departure_time,
+                });
             }
 
             raptor_trips_for_this_route.push(RaptorTrip {
@@ -403,7 +405,7 @@ pub fn build_routes(
         raptor_trips_for_this_route.sort_by_key(|trip| trip.stop_times[0].departure);
 
         // adding this route to routes_serving_stops
-        let route_id = RaptorRouteID { id: route_idx };
+        let route_id = TimetableRouteID::new(route_idx);
         for (position, stop_id) in route_stops.iter().enumerate() {
             let route_serving_this_stop = RaptorRouteServingStop {
                 route_id,

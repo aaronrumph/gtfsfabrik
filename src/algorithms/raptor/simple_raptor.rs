@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 
 use crate::algorithms::raptor::types::{
-    Journey, Leg, RaptorRouteID, RaptorState, RaptorStopID, RaptorTimetable, INFINITY,
+    INFINITY, Journey, Leg, RaptorState, RaptorStopID, RaptorTimetable, TimetableRouteID,
 };
 use crate::gtfs::datetime::Seconds;
 use crate::utils::errors::RaptorError;
@@ -114,7 +114,7 @@ impl SimpleRaptor {
             // for first part of round collect all route, boarding_stop, and stop_idx tuple from
             // marked stops (using rayon for parallel) then add into queue using only earliest
             // boarding stop per route
-            let route_entries: Vec<(RaptorRouteID, RaptorStopID, usize)> = state
+            let route_entries: Vec<(TimetableRouteID, RaptorStopID, usize)> = state
                 .marked_stops
                 .par_iter()
                 .flat_map_iter(|&stop| {
@@ -142,7 +142,7 @@ impl SimpleRaptor {
             // second part of round, traverse each route and mark stops
             for (route_idx, entry) in route_queue.iter().enumerate() {
                 let Some((_, boarding_idx)) = entry else { continue };
-                let route_id = RaptorRouteID { id: route_idx };
+                let route_id = TimetableRouteID::new(route_idx);
                 let route = &timetable.routes[route_idx];
 
                 let mut current_trip: Option<usize> = None;

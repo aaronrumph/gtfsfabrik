@@ -1,13 +1,13 @@
-use std::cmp::Ordering;
-
 // THIS IS A NEW GROUND UP ATTEMPT AT RAPTOR BECAUSE PREVIOUS ATTEMPT WAS MORE CONVALUTED
 use rayon::prelude::*;
 
 use crate::algorithms::raptor::types::{
-    INFINITY, Journey, Leg, RaptorQueryResult, RaptorRouteID, RaptorRouteServingStop, RaptorState, RaptorStopID, RaptorTimetable, RaptorTransfer
+    INFINITY, Journey, Leg, RaptorQueryResult, RaptorRouteID, RaptorRouteServingStop, RaptorState, RaptorStopID,
+    RaptorTimetable, RaptorTransfer, TimetableRouteID,
 };
 use crate::gtfs::datetime::Seconds;
 use crate::utils::errors::RaptorError;
+use std::mem;
 
 // RAPTOR obj/class
 #[derive(Debug, Clone)]
@@ -75,6 +75,20 @@ impl RaptorHandler {
         }
     }
 
+    pub fn clear_state(&mut self) {
+        // function to clear the tau tables etc after query so can reuse same obj
+        self.tau_prev.fill(INFINITY);
+        self.tau_current.fill(INFINITY);
+        self.tau_best.fill(INFINITY);
+
+        self.marked_prev.fill(false);
+        self.marked_current.fill(false);
+
+        self.marked_stops_prev.clear();
+        self.marked_stops_current.clear();
+        self.parent_leg.clear();
+    }
+
     pub fn query(
         &mut self,
         origin: RaptorStopID,
@@ -82,7 +96,7 @@ impl RaptorHandler {
         departure_time: Seconds,
         max_transfers: Option<usize>,
     ) -> Result<RaptorQueryResult, RaptorError> {
-        // TODO: Need to make state clear function to make sure can reuse obj
+        self.clear_state();
 
         // we start with 0, where round 0 is 0 transfers (so only initial stop and
         // walkable neighbors)
@@ -91,18 +105,17 @@ impl RaptorHandler {
         // If no max_transfers, default big num
         let max_transfers = match max_transfers {
             Some(num) => num,
-            None => 10  // not absurdly large, but large enough that should never happen
+            None => 10, // not absurdly large, but large enough that should never happen
         };
         let max_boardings = max_transfers + 1; // useful to avoid off by one errors
 
         // initializing leg tracker (+ 1 because of just walk round)
         self.parent_leg = vec![vec![None; self.num_stops]; max_boardings + 1];
 
-
         // mark and update origin
         self.marked_current[origin.id] = true;
         self.marked_stops_current.push(origin);
-        
+
         self.tau_current[origin.id] = departure_time;
         self.tau_best[origin.id] = departure_time;
 
@@ -115,63 +128,76 @@ impl RaptorHandler {
             self.tau_best[transfer_dest_id.id] = arrival_time;
 
             // adding 0th round leg info so that can see initial walk to stop
-            self.parent_leg[0][transfer_dest_id.id] = Some(Leg { 
-                origin_stop: origin, 
-                destination_stop: transfer_dest_id, 
-                leg_start_time: departure_time, 
-                leg_end_time: arrival_time, 
-                trip_id: None});
+            self.parent_leg[0][transfer_dest_id.id] = Some(Leg {
+                origin_stop: origin,
+                destination_stop: transfer_dest_id,
+                leg_start_time: departure_time,
+                leg_end_time: arrival_time,
+                trip_id: None,
+            });
 
             // mark in both lists for initial round
             self.marked_stops_current.push(transfer_dest_id);
             self.marked_current[transfer_dest_id.id] = true;
         }
-        // now properly initialized, can begin round by round algo. 
-
+        // now properly initialized, can begin round by round algo.
 
         // first, helper function that gets state to proper place for start of next round (returns
         // new round if allowed)
-        fn increment_round(starting_round: usize, max_boardings: usize, raptor_handler: &mut RaptorHandler) -> Option<usize> {
+        fn increment_round(
+            starting_round: usize,
+            max_boardings: usize,
+            raptor_handler: &mut RaptorHandler,
+        ) -> Option<usize> {
             // check for max transfers limit
-            if starting_round >= max_boardings { // SAFETY: should never be greater but jic
+            if starting_round >= max_boardings {
+                // SAFETY: should never be greater but jic
                 return None;
             } else {
-
                 let num_stops = raptor_handler.num_stops;
 
                 // move current into prev, clear current, and clear marked
-                // QUESTION: way to get out of cloning here? Memswap? 
-                raptor_handler.tau_prev = raptor_handler.tau_current.clone();
+                raptor_handler.tau_prev = mem::take(&mut raptor_handler.tau_current);
                 raptor_handler.tau_current = vec![INFINITY; num_stops];
 
-                // QUESTION: same thing here, way to avoid cloning?
-                raptor_handler.marked_prev = raptor_handler.marked_current.clone();
+                raptor_handler.marked_prev = mem::take(&mut raptor_handler.marked_current);
                 raptor_handler.marked_current = vec![false; num_stops];
 
-                raptor_handler.marked_stops_prev = raptor_handler.marked_stops_current.clone();
+                raptor_handler.marked_stops_prev = mem::take(&mut raptor_handler.marked_stops_current);
                 raptor_handler.marked_stops_current = vec![];
-
-                // FIX: memswapping should be more efficient because no deep cloning required and
-                // same initialization of vectors involved
 
                 Some(starting_round + 1)
             }
         }
 
         // helper function to return the best route so far so can short circuit easily
-        fn best_so_far(origin: RaptorStopID, destination: RaptorStopID, departure_time: Seconds, raptor_handler: &RaptorHandler) -> Result<RaptorQueryResult, RaptorError> {
-
+        fn best_so_far(
+            origin: RaptorStopID,
+            destination: RaptorStopID,
+            departure_time: Seconds,
+            raptor_handler: &RaptorHandler,
+        ) -> Result<RaptorQueryResult, RaptorError> {
             // easy part; check tau_best for arrival time
             let earliest_arrival_time = match raptor_handler.tau_best[destination.id] {
-                INFINITY => return Err(RaptorError::DestinationUnreachable { origin, destination, departure_time }),
+                INFINITY => {
+                    return Err(RaptorError::DestinationUnreachable {
+                        origin,
+                        destination,
+                        departure_time,
+                    });
+                }
                 some_real_time => some_real_time,
-            }
+            };
 
             let travel_time = earliest_arrival_time - departure_time;
 
             // TODO: Diary construction!!!
 
-            Ok(RaptorQueryResult { earliest_arrival_time, travel_time, diary: None })
+            Ok(RaptorQueryResult {
+                earliest_arrival_time,
+                travel_time,
+                diary: None,
+            })
         }
 
         // now can start going round by round, starting with round 1
@@ -182,12 +208,10 @@ impl RaptorHandler {
         };
 
         while query_round <= max_boardings {
-
             // first building queue
             // because dense int ids for routes too, can fully reserve up front!
             // BENCH: better to reserve like this in practice?
             let mut route_queue: Vec<Option<usize>> = vec![None; self.timetable.routes.len()];
-
 
             // BENCH: cf. par_iter() vs iter
             // go through all stops that were marked in previous round
@@ -207,7 +231,6 @@ impl RaptorHandler {
                 }
             }
 
-
             // BENCH: cf. par_iter
             // now need to mark stops/scan along the routes
             for (route_idx, maybe_start_sequence) in route_queue.iter().enumerate() {
@@ -217,7 +240,7 @@ impl RaptorHandler {
                 };
 
                 // checking whether better trip possible from past round (FIFO baby)
-                let route_id = RaptorRouteID::new(route_idx);
+                let route_id = TimetableRouteID::new(route_idx);
                 let route = &self.timetable.routes[route_idx];
                 let mut current_trip_idx: Option<usize> = None;
                 let mut boarded_at_stop_sequence: Option<usize> = None;
@@ -228,8 +251,7 @@ impl RaptorHandler {
 
                     // improve stop arrival with currently boarded trip if possible
                     if let Some(trip_idx) = current_trip_idx {
-                        let arrival_time =
-                            self.timetable.get_arrival_time(route_id, trip_idx, stop_sequence);
+                        let arrival_time = self.timetable.get_arrival_time(route_id, trip_idx, stop_sequence);
 
                         if arrival_time < self.tau_best[stop_id.id] {
                             self.tau_current[stop_id.id] = arrival_time;
@@ -261,7 +283,9 @@ impl RaptorHandler {
                     // check if prev arrival time would have let board earlier trip
                     let prev_arrival_time = self.tau_prev[stop_id.id];
                     if prev_arrival_time != INFINITY {
-                        if let Some(candidate_trip_idx) = self.timetable.earliest_trip(route_id, stop_sequence, prev_arrival_time) {
+                        if let Some(candidate_trip_idx) =
+                            self.timetable.earliest_trip(route_id, stop_sequence, prev_arrival_time)
+                        {
                             match current_trip_idx {
                                 Some(existing_trip_idx) if existing_trip_idx <= candidate_trip_idx => {}
                                 _ => {
@@ -269,7 +293,7 @@ impl RaptorHandler {
                                     boarded_at_stop_sequence = Some(stop_sequence);
                                 }
                             }
-                        }                    
+                        }
                     }
                 }
             }
@@ -283,12 +307,10 @@ impl RaptorHandler {
                     let transfer_dest_id = transfer.to_stop;
                     let arrival_time = self.tau_current[stop_id.id] + transfer.walk_time;
 
-
                     // same as initialization round // TODO: make into reusable function??
                     if arrival_time < self.tau_current[transfer_dest_id.id] {
                         self.tau_current[transfer_dest_id.id] = arrival_time;
-                        self.tau_best[transfer_dest_id.id] =
-                            self.tau_best[transfer_dest_id.id].min(arrival_time);
+                        self.tau_best[transfer_dest_id.id] = self.tau_best[transfer_dest_id.id].min(arrival_time);
 
                         self.parent_leg[query_round][transfer_dest_id.id] = Some(Leg {
                             origin_stop: *stop_id,

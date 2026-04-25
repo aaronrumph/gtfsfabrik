@@ -3,8 +3,8 @@ use rayon::prelude::*;
 
 use crate::algorithms::raptor::gtfs_loader::{build_timetable, load_gtfs, map_ids};
 use crate::algorithms::raptor::types::{
-    IdMap, Journey, Leg, RaptorGtfsFeed, RaptorRouteID, RaptorState, RaptorStop, RaptorStopID, RaptorTimetable,
-    INFINITY,
+    INFINITY, IdMap, Journey, Leg, RaptorGtfsFeed, RaptorRouteID, RaptorState, RaptorStop, RaptorStopID,
+    RaptorTimetable,
 };
 use crate::gtfs::datetime::Seconds;
 use crate::utils::errors::RaptorError;
@@ -14,7 +14,6 @@ pub struct Raptor {
     pub feed: String,
     raptor_feed: RaptorGtfsFeed,
     timetable: RaptorTimetable,
-    // TODO: initialize RaptorState here?
     id_map: IdMap,
     state: Option<RaptorState>,
 }

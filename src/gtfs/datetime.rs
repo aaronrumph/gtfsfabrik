@@ -83,13 +83,13 @@ pub fn gtfs_time_to_seconds(gtfs_time: &str) -> Result<Seconds, TimeParsingError
             return Err(TimeParsingError::InvalidComponent(
                 "minutes".to_string(),
                 time_components[1].to_string(),
-            ))
+            ));
         }
         Err(_) => {
             return Err(TimeParsingError::InvalidComponent(
                 "minutes".to_string(),
                 time_components[1].to_string(),
-            ))
+            ));
         }
     };
 
@@ -99,15 +99,23 @@ pub fn gtfs_time_to_seconds(gtfs_time: &str) -> Result<Seconds, TimeParsingError
             return Err(TimeParsingError::InvalidComponent(
                 "seconds".to_string(),
                 time_components[2].to_string(),
-            ))
+            ));
         }
         Err(_) => {
             return Err(TimeParsingError::InvalidComponent(
                 "seconds".to_string(),
                 time_components[2].to_string(),
-            ))
+            ));
         }
     };
 
     Ok(hours * 3600 + minutes * 60 + seconds)
+}
+
+pub fn seconds_to_gtfs_time(num_seconds: Seconds) -> String {
+    let hours = num_seconds / 3600;
+    let minutes = (num_seconds % 3600) / 60;
+    let seconds = num_seconds % 60;
+
+    format!("{hours:02}:{minutes:02}:{seconds:02}")
 }

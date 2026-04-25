@@ -113,7 +113,6 @@ pub fn build_stops(feed: &RaptorGtfsFeed, id_map: &IdMap) -> Result<Vec<RaptorSt
         .collect()
 }
 
-// TODO: raptor_query function that wraps loader and simple raptor to give travel time
 // TODO: itinerary function that wraps ... and returns full travel directions
 
 // tuple with (sequence, stop_id, arrival_time, departure_time)
@@ -256,9 +255,6 @@ pub fn build_routes(
     // returns result, if Ok(...) then returns tuple of 0: routes and 1:
     // routes_serving_stops for timetable building
 
-    // BUG: Assumes that all trips with the same route_id have the same stop sequence. not
-    // necessarily true! Short turn routes/etc which are marked as being under the same route to
-    // customer have have same route_id
     // NOTE: assumes that if arrival time for one route is earlier than another, than its departure
     // time is too
 

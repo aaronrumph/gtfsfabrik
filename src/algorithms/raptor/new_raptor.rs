@@ -200,7 +200,6 @@ impl RaptorHandler {
 
             let travel_time = earliest_arrival_time - departure_time;
 
-            // TODO: Diary construction!!!
             let mut legs = Vec::new();
             let mut current_stop = destination;
             let mut current_round = round;
@@ -374,6 +373,7 @@ impl RaptorHandler {
                         // again avoiding duplication
                         if !self.marked_current[transfer_dest_id.id] {
                             self.marked_current[transfer_dest_id.id] = true;
+                            self.marked_stops_current.push(transfer_dest_id);
                         }
                     }
                 }

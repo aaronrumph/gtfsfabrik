@@ -176,7 +176,6 @@ impl Journey {
             .saturating_sub(1)
     }
 
-    // TODO:: FIX THIS FUNCTION!
     // returns the total time elapsed for the journey
     pub fn total_travel_time(&self) -> Result<Seconds, RaptorError> {
         let departure_time = self.departure_time;

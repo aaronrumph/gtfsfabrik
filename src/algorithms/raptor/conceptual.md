@@ -1,6 +1,6 @@
 # RAPTOR Conceptual Guide
 
-Tyhis is basically just here for me to jot out in plain language
+This is basically just here for me to jot out in plain language
 what RAPTOR procedure looks like
 
 1. Load GTFS

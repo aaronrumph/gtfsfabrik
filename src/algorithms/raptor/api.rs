@@ -3,7 +3,7 @@ use crate::{
     algorithms::raptor::{
         cache::RaptorCache,
         gtfs_loader::{build_timetable, load_gtfs, map_ids},
-        new_raptor::RaptorHandler,
+        simple_raptor::RaptorHandler,
         types::{
             IdMap, Invertible, Journey, RaptorGtfsFeed, RaptorQueryResult, RaptorStopID, RaptorTimetable, RaptorTripID,
             ReverseIdMap,
@@ -235,7 +235,7 @@ impl Raptor {
 
         // this first part is trip overview ex: "'Monroe (Blue)' to 'Monroe (Red)' at 08:00:00"
         let mut human_readable_journey = format!(
-            "{} to {}: \nDEPART AT: {} | ARRIVE AT: {} | TOTAL TRAVEL TIME: {}\n\n",
+            "{} to {}: \nDEPART AT: {} | ARRIVE AT: {} | TOTAL TRAVEL TIME: {}\n",
             origin_gtfs_name, destination_gtfs_name, departure_time, arrival_time, total_travel_time
         );
 

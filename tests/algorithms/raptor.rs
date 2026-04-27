@@ -125,6 +125,57 @@ fn readable_diary_for_simple_trip() {
 
 #[test]
 #[ignore]
+fn many_trip_diary_queries() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting longer travel time test!");
+
+    // NOTE: requires that cta_gtfs dir exists!!
+    let cta_gtfs_dir = "tests/inputs/files/cta_gtfs";
+
+    // read in stops.txt to dataframe
+    let cta_gtfs_stops = read_gtfs!(cta_gtfs_dir, GtfsFiles::Stops);
+
+    // pick 100 random stops from the stops dataframe to use as origins and destinations
+    let mut rng = rand::thread_rng();
+    let stop_ids: Vec<String> = cta_gtfs_stops
+        .column("stop_id")?
+        .str()?
+        .into_iter()
+        .filter_map(|opt| opt.map(|s| s.to_string()))
+        .collect();
+
+    // 20 stops gives 400 od-pairs/tests
+    let random_stop_ids: Vec<String> = stop_ids.choose_multiple(&mut rng, 20).cloned().collect();
+
+    // create raptor object
+    let mut raptor_obj = Raptor::new(cta_gtfs_dir)?;
+
+    // loop through 100 random origin destination pairs and get travel time
+    let departure_time = 28800; // 8
+    let max_transfers = 10;
+
+    for origin in &random_stop_ids {
+        for destination in &random_stop_ids {
+            // FIX: Trip diary will error if origin == destination
+            if origin == destination {
+                continue;
+            }
+
+            let query_result = raptor_obj.trip_diary_readable(origin, destination, departure_time, max_transfers);
+
+            // just printing out the (now readable!) trip diary
+            match query_result {
+                Ok(readable_diary) => {
+                    println!("{}", readable_diary);
+                }
+                Err(err) => panic!("ERROR: {}", err),
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+#[ignore]
 fn many_travel_time_queries() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting longer travel time test!");
 

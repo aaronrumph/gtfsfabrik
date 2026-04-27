@@ -5,7 +5,7 @@ use rand::seq::SliceRandom;
 
 use gtfsfabrik::{
     algorithms::raptor::{api::Raptor, types::RaptorQueryResult},
-    gtfs::datetime::Seconds,
+    gtfs::datetime::{Seconds, seconds_to_gtfs_time},
     read_gtfs,
     utils::{errors::RaptorError, files::gtfs::GtfsFiles},
 };
@@ -49,14 +49,14 @@ fn quick_travel_time() {
 #[ignore]
 fn diary_for_simple_trip() {
     // quick test to check that quick travel time returns good results!
-    println!("Starting quick travel time test");
+    println!("Starting Trip Diary Test");
 
     let gtfs_stop_id_1 = "18604"; // Clark & Div red line
     let gtfs_stop_id_2 = "30193"; // Jackson Austin bus term
     let departure_time = 28800;
     let max_transfers = 10;
 
-    println!("Creating raptor obj");
+    println!("Creating RAPTOR object");
     // if cta_gtfs not run yet won't work
     // FIX: fix so that don't have to run cta_gtfs download test first
     let raptor_obj = Raptor::new("tests/inputs/files/cta_gtfs");
@@ -67,8 +67,11 @@ fn diary_for_simple_trip() {
         Err(errmsg) => panic!("Error: {}", errmsg),
     };
 
-    println!("Getting travel time");
-    let query_result = raptor_obj.trip_details(gtfs_stop_id_1, gtfs_stop_id_2, departure_time, max_transfers);
+    println!("Getting Trip Diary");
+    println!();
+
+    // yay simple functions
+    let query_result = raptor_obj.trip_diary(gtfs_stop_id_1, gtfs_stop_id_2, departure_time, max_transfers);
 
     // a bit quick and dirty
     let diary = match query_result {
@@ -81,6 +84,43 @@ fn diary_for_simple_trip() {
         }
         Err(_) => panic!("ERROR"),
     };
+}
+
+#[test]
+#[ignore]
+fn readable_diary_for_simple_trip() {
+    // NOTE: THIS IS THE TEST TO RUN IF YOU WANT TO CHECK WHETHER RAPTOR WORKS!!
+    println!("Starting Trip Diary Test");
+
+    let gtfs_stop_id_1 = "18604"; // Clark & Div red line
+    let gtfs_stop_id_2 = "30193"; // Jackson Austin bus term
+    let departure_time = 28800;
+    let max_transfers = 10;
+
+    println!("Creating RAPTOR object");
+
+    // if cta_gtfs not run yet won't work
+    // FIX: fix so that don't have to run cta_gtfs download test first
+    let raptor_obj = Raptor::new("tests/inputs/files/cta_gtfs");
+
+    // quick error handling fix for this test
+    let mut raptor_obj = match raptor_obj {
+        Ok(obj) => obj,
+        Err(errmsg) => panic!("Error: {}", errmsg),
+    };
+
+    println!("Running Trip Diary query");
+    println!();
+
+    let query_result = raptor_obj.trip_diary_readable(gtfs_stop_id_1, gtfs_stop_id_2, departure_time, max_transfers);
+
+    // just printing out the (now readable!) trip diary
+    match query_result {
+        Ok(readable_diary) => {
+            println!("{}", readable_diary);
+        }
+        Err(err) => panic!("ERROR: {}", err),
+    }
 }
 
 #[test]
@@ -118,7 +158,12 @@ fn many_travel_time_queries() -> Result<(), Box<dyn std::error::Error>> {
             let query_result = raptor_obj.travel_time(origin, destination, departure_time, max_transfers);
 
             match query_result {
-                Ok(result) => println!("Travel time from {} to {} is {}", origin, destination, result),
+                Ok(result) => println!(
+                    "Travel time from {} to {} is {}",
+                    origin,
+                    destination,
+                    seconds_to_gtfs_time(result)
+                ),
                 Err(err) => println!("Error getting travel time from {} to {}: {}", origin, destination, err),
             }
         }

@@ -1,7 +1,5 @@
 // OSM PBF file types and structs
 
-use crate::utils::errors::OSMErorr;
-
 pub type Bytes = Vec<u8>;
 
 pub enum BlobType {
@@ -44,7 +42,7 @@ pub enum BlobData {
     Raw(Bytes),
     Zlib(Bytes),
     Lzma(Bytes),
-    ObseleteBZip2(Bytes),
+    ObsoleteBZip2(Bytes),
     Lz4(Bytes),
     Zstd(Bytes),
 }
@@ -58,81 +56,96 @@ impl Blob {
 
 // TODO: docs
 pub struct HeaderBlock {
-    header_bbox: HeaderBBox,
+    pub bbox: Option<HeaderBBox>,
 
-    required_features: Vec<String>,
-    optional_features: Vec<String>,
+    pub required_features: Vec<String>,
+    pub optional_features: Vec<String>,
 
-    writing_program: Option<String>,
-    source: Option<String>,
+    pub writing_program: Option<String>,
+    pub source: Option<String>,
 
-    osmosis_replication_timestamp: Option<i64>,
-    osmosis_replication_sequence_number: Option<i64>,
-    osmosis_replication_base_url: Option<String>,
+    pub osmosis_replication_timestamp: Option<i64>,
+    pub osmosis_replication_sequence_number: Option<i64>,
+    pub osmosis_replication_base_url: Option<String>,
 }
 
 pub struct HeaderBBox {
-    left: i64,
-    right: i64,
-    top: i64,
-    bottom: i64,
+    pub left: i64,
+    pub right: i64,
+    pub top: i64,
+    pub bottom: i64,
 }
 
 /// Metadata about the object
 pub struct Info {
-    version: Option<i32>,
-    timestamp: Option<i64>,
-    changeset: Option<i64>,
-    uid: Option<i32>,
-    user_sid: Option<u32>,
+    pub version: Option<i32>,
+    pub timestamp: Option<i64>,
+    pub changeset: Option<i64>,
+    pub uid: Option<i32>,
+    pub user_sid: Option<u32>,
 
-    visible: Option<Bool>,
+    pub visible: Option<bool>,
 }
 
 pub struct Node {
-    // TODO: node struct impl
-    id: i64,
-    keys: Vec<u32>,
-    vals: Vec<u32>,
-    info: Option<Info>,
-    lat: i64,
-    lon: i64,
+    pub id: i64,
+    pub keys: Vec<u32>,
+    pub vals: Vec<u32>,
+    pub info: Option<Info>,
+    pub lat: i64,
+    pub lon: i64,
 }
 
 pub struct DenseInfo {
-    // TODO: Dense info
+    pub version: Vec<i32>,
+    pub timestamp: Vec<i64>,
+    pub changeset: Vec<i64>,
+    pub uid: Vec<i32>,
+    pub user_sid: Vec<i32>,
+    pub visible: Vec<bool>,
 }
+
 pub struct DenseNodes {
-    id: Vec<i64>,
-    denseinfo: Option<DenseInfo>,
-    // TODO: finish
+    pub id: Vec<i64>,
+    pub denseinfo: Option<DenseInfo>,
+    pub lat: Vec<i64>,
+    pub lon: Vec<i64>,
+
+    pub keys_vals: Vec<i32>,
 }
 
 pub struct Way {
-    id: u64,
-    keys: Vec<u32>,
-    vals: Vec<u32>,
-    info: Option<Info>,
-    refs: Vec<i64>,
-    lat: Vec<i64>,
-    lon: Vec<i64>,
+    pub id: i64,
+    pub keys: Vec<u32>,
+    pub vals: Vec<u32>,
+    pub info: Option<Info>,
+    pub refs: Vec<i64>,
+    pub lat: Vec<i64>,
+    pub lon: Vec<i64>,
+}
+
+// MemberType enum used in Relation!
+pub enum MemberType {
+    Node,
+    Way,
+    Relation,
 }
 
 pub struct Relation {
-    id: u64,
-    keys: Vec<u32>,
-    vals: Vec<u32>,
+    pub id: i64,
+    pub keys: Vec<u32>,
+    pub vals: Vec<u32>,
 
-    info: Option<Info>,
+    pub info: Option<Info>,
 
     // Parallel Aarrays
-    roles_sid: Vec<i32>,
-    memids: Vec<i64>,
-    types: Vec<MemberTypes>,
+    pub roles_sid: Vec<i32>,
+    pub memids: Vec<i64>,
+    pub types: Vec<MemberType>,
 }
 
 pub struct ChangeSet {
-    // TODO: figure out what this even is and what to do with it
+    pub id: i64,
 }
 
 /// 6 kinds of primitive groups so using enum
@@ -147,10 +160,12 @@ pub enum PrimitiveGroup {
 pub struct PrimitiveBlock {
     pub string_table: StringTable,
     pub primitive_groups: Vec<PrimitiveGroup>,
-    pub granularity: i32,
-    // TODO: Figure out types for these
-    // pub lat_offset:
-    // pub lon_offset:
+    pub granularity: Option<i32>, // default = 100
+
+    pub lat_offset: Option<i64>, // default = 0
+    pub lon_offset: Option<i64>, // default = 0
+
+    pub date_granularity: Option<i32>, // default = 1000
 }
 
 pub struct StringTable {

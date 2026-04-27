@@ -1,4 +1,4 @@
-use gtfsfabrik::utils::errors::OSMErorr;
+use gtfsfabrik::utils::errors::OSMError;
 use gtfsfabrik::utils::files::osm::validate_osm;
 
 use std::fs;
@@ -18,7 +18,7 @@ fn wrong_extension_osm_fails() {
     fs::write(&f, b"").unwrap();
     assert!(matches!(
         validate_osm(f.to_str().unwrap()),
-        Err(OSMErorr::NotAPbfFile(_))
+        Err(OSMError::NotAPbfFile(_))
     ));
 }
 
@@ -27,7 +27,7 @@ fn directory_returns_not_a_file() {
     let dir = tempdir().unwrap();
     assert!(matches!(
         validate_osm(dir.path().to_str().unwrap()),
-        Err(OSMErorr::NotAFile(_))
+        Err(OSMError::NotAFile(_))
     ));
 }
 
@@ -35,7 +35,7 @@ fn directory_returns_not_a_file() {
 fn cant_find_file() {
     assert!(matches!(
         validate_osm("/tmp/does_not_exist"),
-        Err(OSMErorr::FileNotFound(_))
+        Err(OSMError::FileNotFound(_))
     ));
 }
 

@@ -25,7 +25,7 @@ pub enum InitError {
     GTFSError(#[from] GtfsError),
 
     #[error("OSM Error!: {0}")]
-    OSMError(#[from] OSMErorr),
+    OSMError(#[from] OSMError),
 }
 
 // SECTION: GEOCODING ERRORS
@@ -96,7 +96,7 @@ pub enum TimeParsingError {
 
 // SECTION: OSM ERRORS
 #[derive(Debug, Error)]
-pub enum OSMErorr {
+pub enum OSMError {
     #[error("No file was found at the path you provided: {0}")]
     FileNotFound(String),
 

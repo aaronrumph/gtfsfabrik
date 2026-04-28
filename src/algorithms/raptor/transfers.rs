@@ -1,9 +1,10 @@
 // This module creates the transfers needed for RAPTOR
 
 use crate::{
-    algorithms::raptor::types::{IdMap, RaptorGtfsFeed, RaptorStopID, RaptorTransfer, TransfersServingStop},
-    utils::{errors::RaptorError, files::gtfs::StopColumns},
+    algorithms::raptor::types::{IdMap, RaptorGtfsFeed, RaptorTransfer, TransfersServingStop},
+    errors::raptor::RaptorError,
 };
+
 use rayon::prelude::*;
 
 // TODO: Move to sensible place so can be reused

@@ -1,6 +1,6 @@
 // this module has datetime stuff for gtfs for raptor and recalculating stop times
 
-use crate::utils::errors::TimeParsingError;
+use crate::errors::parsing::TimeParsingError;
 
 const MIDNIGHT_SECONDS: i32 = 24 * 60 * 60;
 

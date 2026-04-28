@@ -1,12 +1,9 @@
 // types for RAPTOR
 use polars::prelude::*;
-use rayon::prelude::*;
 use rkyv::{Archive, Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::gtfs::datetime::Seconds;
-use crate::utils::errors::RaptorError;
-use crate::utils::files::gtfs::StopColumns;
+use crate::{errors::raptor::RaptorError, files::gtfs::StopColumns, gtfs::datetime::Seconds};
 
 // TODOS:
 // TODO: Remove unnecessary cloning everywhere

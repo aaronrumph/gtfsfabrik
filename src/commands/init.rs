@@ -1,5 +1,10 @@
-use crate::utils::errors::InitError;
-use crate::utils::files::gtfs::{validate_gtfs, GtfsInputType};
+// The init command!
+
+use crate::{
+    errors::commands::InitError,
+    files::gtfs::{GtfsInputType, validate_gtfs},
+};
+
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -49,7 +54,10 @@ pub fn init_fabrik(init_options: InitOptions) -> Result<(), InitError> {
             Ok(_) => {}
             Err(e) if e.kind() == io::ErrorKind::NotFound => {
                 // at least some directories along the way are missing
-                println!("The given path {0} is missing intermediate directories along the way. Would you like to create them? [y/n]: ", init_options.path);
+                println!(
+                    "The given path {0} is missing intermediate directories along the way. Would you like to create them? [y/n]: ",
+                    init_options.path
+                );
 
                 let mut inputted_decision = String::new();
                 io::stdin().read_line(&mut inputted_decision)?;

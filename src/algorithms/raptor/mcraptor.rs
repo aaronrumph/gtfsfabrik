@@ -1,13 +1,13 @@
 // MCRaptor implemenation (multi-criteria)
-use rayon::prelude::*;
 
-use crate::algorithms::raptor::gtfs_loader::{build_timetable, load_gtfs, map_ids};
-use crate::algorithms::raptor::types::{
-    INFINITY, IdMap, Journey, Leg, RaptorGtfsFeed, RaptorRouteID, RaptorState, RaptorStop, RaptorStopID,
-    RaptorTimetable,
+use crate::{
+    algorithms::raptor::{
+        gtfs_loader::{build_timetable, load_gtfs, map_ids},
+        types::{IdMap, Journey, RaptorGtfsFeed, RaptorState, RaptorTimetable},
+    },
+    errors::raptor::RaptorError,
+    gtfs::datetime::Seconds,
 };
-use crate::gtfs::datetime::Seconds;
-use crate::utils::errors::RaptorError;
 
 // Raptor!
 pub struct Raptor {
@@ -21,7 +21,7 @@ pub struct Raptor {
 impl Raptor {
     pub fn new(feed: &str) -> Result<Self, RaptorError> {
         // internally build all the structs needed based solely on input gtfs_dir
-        let raptor_feed = load_gtfs(feed)?;
+        let raptor_feed = load_gtfs(&feed)?;
         let id_map = map_ids(&raptor_feed)?;
         let timetable = build_timetable(&raptor_feed, &id_map)?;
         let state = None; // start off with no state, will be initialized in query

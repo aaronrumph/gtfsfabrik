@@ -1,5 +1,5 @@
 // internal modules
-use crate::utils::errors::OSMError;
+use crate::errors::osm::OSMError;
 
 // external
 use std::ffi::OsStr;

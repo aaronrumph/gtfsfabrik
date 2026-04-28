@@ -1,21 +1,16 @@
 // This module allows for caching of a Raptor network so do not have slow loading times
 // everytime a new query is called
 
+use crate::errors::raptor::RaptorError;
+use crate::files::gtfs::{RouteColumns, StopColumns, TripColumns};
 use crate::{
-    algorithms::raptor::{
-        api::Raptor,
-        types::{IdMap, RaptorGtfsFeed, RaptorTimetable},
-    },
-    utils::{
-        errors::RaptorError,
-        files::gtfs::{RouteColumns, StopColumns, StopTimesColumns, TripColumns},
-    },
+    algorithms::raptor::types::{IdMap, RaptorGtfsFeed, RaptorTimetable},
+    files::gtfs::StopTimesColumns,
 };
 
-use polars::prelude::*;
-use rkyv::{Serialize, deserialize, rancor::Error};
-use std::{fs::File, path::PathBuf};
-use xxhash_rust::{xxh3::xxh3_64, xxh64::Xxh64};
+use rkyv::{deserialize, rancor::Error};
+use std::path::PathBuf;
+use xxhash_rust::xxh64::Xxh64;
 
 #[derive(Clone, Debug)]
 pub struct RaptorCache {
@@ -41,6 +36,7 @@ impl RaptorCache {
     }
 
     // TODO: add docs
+    // TODO: change to impl default trait for RaptorCache
     pub fn default() -> Result<Self, RaptorError> {
         let dir = Self::default_cache_dir()?;
         Self::new(dir)
@@ -65,7 +61,9 @@ impl RaptorCache {
         let num_trips = gtfs_feed.trips.height();
         let num_routes = gtfs_feed.routes.height();
 
+        // picking columns out of DFs
         let stop_ids = gtfs_feed.stops.column(&StopColumns::StopID.to_string())?.str()?;
+
         let stop_time_ids = gtfs_feed
             .stop_times
             .column(&StopTimesColumns::StopID.to_string())?
@@ -73,6 +71,7 @@ impl RaptorCache {
         let trip_ids = gtfs_feed.trips.column(&TripColumns::TripID.to_string())?.str()?;
         let route_ids = gtfs_feed.routes.column(&RouteColumns::RouteID.to_string())?.str()?;
 
+        // using the midway point
         let middle_stop = stop_ids.get(num_stops / 2).unwrap_or("");
         let middle_stop_time = stop_time_ids.get(num_stop_times / 2).unwrap_or("");
         let middle_trip = trip_ids.get(num_trips / 2).unwrap_or("");

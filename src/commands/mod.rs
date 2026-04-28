@@ -1,7 +1,9 @@
 pub mod add;
 pub mod init;
+pub mod interactive;
 pub mod list;
 pub mod remove;
+pub mod run;
 pub mod scenario;
 pub mod stamp;
 pub mod stash;

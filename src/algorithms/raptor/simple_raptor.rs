@@ -1,13 +1,13 @@
 // THIS IS A NEW GROUND UP ATTEMPT AT RAPTOR BECAUSE PREVIOUS ATTEMPT WAS MORE CONVALUTED
-use rayon::prelude::*;
-
-use crate::algorithms::raptor::types::{
-    INFINITY, Journey, Leg, RaptorQueryResult, RaptorRouteID, RaptorRouteServingStop, RaptorState, RaptorStopID,
-    RaptorTimetable, RaptorTransfer, TimetableRouteID,
-};
-use crate::gtfs::datetime::Seconds;
-use crate::utils::errors::RaptorError;
 use std::mem;
+
+use crate::{
+    algorithms::raptor::types::{
+        INFINITY, Journey, Leg, RaptorQueryResult, RaptorStopID, RaptorTimetable, TimetableRouteID,
+    },
+    errors::raptor::RaptorError,
+    gtfs::datetime::Seconds,
+};
 
 // RAPTOR obj/class
 #[derive(Debug, Clone)]

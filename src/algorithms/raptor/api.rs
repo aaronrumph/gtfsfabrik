@@ -9,8 +9,8 @@ use crate::{
             ReverseIdMap,
         },
     },
+    errors::raptor::RaptorError,
     gtfs::datetime::{Seconds, seconds_to_gtfs_time},
-    utils::errors::RaptorError,
 };
 
 pub struct Raptor {

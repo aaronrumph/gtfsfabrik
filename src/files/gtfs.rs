@@ -5,7 +5,7 @@ use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::utils::errors::GtfsError;
+use crate::errors::gtfs::GtfsError;
 
 #[derive(Debug)]
 pub enum GtfsInputType {
@@ -59,8 +59,10 @@ pub fn det_gtfs_input_type(path: &str) -> Result<GtfsInputType, GtfsError> {
             // check whether directorie has zips with same try to unzip method as before
             let has_zips = contents.iter().any(|listing| {
                 let listing_path = listing.path();
-                if listing_path.is_file() && let Ok(file) = File::open(&listing_path) {
-                        return ZipArchive::new(file).is_ok();
+                if listing_path.is_file()
+                    && let Ok(file) = File::open(&listing_path)
+                {
+                    return ZipArchive::new(file).is_ok();
                 }
                 false
             });
@@ -452,7 +454,7 @@ gtfs_columns!(CalendarDates {
 macro_rules! read_gtfs {
     ($path:expr, GtfsFiles::$variant:ident) => {{
         use polars::prelude::*;
-        let file = $crate::utils::files::gtfs::GtfsFiles::$variant;
+        let file = $crate::files::gtfs::GtfsFiles::$variant;
         let path = std::path::Path::new($path).join(file.to_string());
         CsvReadOptions::default()
             .with_has_header(true)

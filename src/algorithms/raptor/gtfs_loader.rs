@@ -5,10 +5,12 @@ use crate::algorithms::raptor::types::{
     IdMap, RaptorGtfsFeed, RaptorRoute, RaptorRouteID, RaptorRouteServingStop, RaptorStop, RaptorStopID,
     RaptorStopTime, RaptorTimetable, RaptorTransfer, RaptorTrip, RaptorTripID, RoutesServingStop, TimetableRouteID,
 };
-use crate::gtfs::datetime::{Seconds, gtfs_time_to_seconds};
-use crate::read_gtfs;
-use crate::utils::errors::RaptorError;
-use crate::utils::files::gtfs::{GtfsFiles, RouteColumns, StopColumns, StopTimesColumns, TripColumns};
+use crate::{
+    errors::raptor::RaptorError,
+    files::gtfs::{GtfsFiles, RouteColumns, StopColumns, StopTimesColumns, TripColumns},
+    gtfs::datetime::{Seconds, gtfs_time_to_seconds},
+    read_gtfs,
+};
 
 use std::collections::HashMap;
 

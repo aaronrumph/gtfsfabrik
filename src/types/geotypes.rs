@@ -1,4 +1,3 @@
-use crate::utils::errors::GeocodingError;
 use clap::ValueEnum;
 use geo::Polygon;
 use serde::Serialize;

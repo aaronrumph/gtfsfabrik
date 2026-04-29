@@ -3,12 +3,7 @@ use std::error::Error;
 // for random sampling of stops
 use rand::seq::SliceRandom;
 
-use gtfsfabrik::{
-    algorithms::raptor::{api::Raptor, types::RaptorQueryResult},
-    gtfs::datetime::{Seconds, seconds_to_gtfs_time},
-    read_gtfs,
-    utils::{errors::RaptorError, files::gtfs::GtfsFiles},
-};
+use gtfsfabrik::{algorithms::raptor::api::Raptor, gtfs::datetime::seconds_to_gtfs_time, read_gtfs};
 
 #[test]
 #[ignore]
@@ -92,8 +87,8 @@ fn readable_diary_for_simple_trip() {
     // NOTE: THIS IS THE TEST TO RUN IF YOU WANT TO CHECK WHETHER RAPTOR WORKS!!
     println!("Starting Trip Diary Test");
 
-    let gtfs_stop_id_1 = "18604"; // Clark & Div red line
-    let gtfs_stop_id_2 = "30193"; // Jackson Austin bus term
+    let gtfs_stop_id_1 = "1528"; // Clark & Div red line
+    let gtfs_stop_id_2 = "9538"; // Jackson Austin bus term
     let departure_time = 28800;
     let max_transfers = 10;
 

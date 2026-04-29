@@ -96,6 +96,17 @@ pub enum Commands {
     },
 
     Interactive {
-        // TODO: Interactive shell a-la MariaDB/MySQL
+        /// Whether or not to end statements with a semicolon when running
+        /// gtfsfabrik in interactive mode.
+        /// Cf.
+        /// gtfsfabrik[basis] > scenario light-rail-extension
+        /// gtfsfabrik[basis] > scenario light-rail-extension;
+        /// Using semicolons to end statements allows for breaking commands up over multiple
+        /// lines.
+        #[arg(long, default_value_t = true)]
+        use_semicolons: bool,
+
+        #[arg(long, default_value = "basis")]
+        scenario: String,
     },
 }

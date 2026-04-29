@@ -1,5 +1,5 @@
 // Test module for testing gtfs file handling
-use gtfsfabrik::{read_gtfs, utils::files::gtfs::GtfsFiles};
+use gtfsfabrik::read_gtfs;
 
 // All four of the following print... tests use google's sample GTFS data from:
 // https://github.com/google/transit/tree/master/gtfs/spec/en/examples/sample-feed-1

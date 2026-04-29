@@ -1,5 +1,5 @@
-use gtfsfabrik::utils::errors::OSMError;
-use gtfsfabrik::utils::files::osm::validate_osm;
+use gtfsfabrik::errors::osm::OSMError;
+use gtfsfabrik::files::osm::validate_osm;
 
 use std::fs;
 use tempfile::tempdir;

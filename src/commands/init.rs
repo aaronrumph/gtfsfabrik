@@ -2,7 +2,10 @@
 
 use crate::{
     errors::commands::InitError,
-    files::gtfs::{GtfsInputType, validate_gtfs},
+    files::{
+        gtfs::{GtfsInputType, validate_gtfs},
+        osm::validate_osm,
+    },
 };
 
 use std::fs;
@@ -41,7 +44,10 @@ pub fn init_fabrik(init_options: InitOptions) -> Result<(), InitError> {
         }
     }
 
-    // TODO: osm validation! need to find osm pbf crate probably
+    // OSM validation
+    if let Some(osm) = &init_options.osm {
+        validate_osm(osm)?;
+    }
 
     // TODO: place validation with nomanatim (get to learn reqwuests)
 
@@ -76,7 +82,7 @@ pub fn init_fabrik(init_options: InitOptions) -> Result<(), InitError> {
     let logs_dir = fabrik_base_path.join(".logs");
     fs::create_dir(&logs_dir)?;
 
-    let log_files_needed = ["info", "debug", "warnings", "errors", "command_history"];
+    let log_files_needed = ["info", "debug", "warnings", "errors"];
     for file in &log_files_needed {
         // don't need to check whether file exists before creating it because will
         // by definition be in a new dir
@@ -84,10 +90,11 @@ pub fn init_fabrik(init_options: InitOptions) -> Result<(), InitError> {
         fs::File::create(file_name)?;
     }
 
-    let fabrik_dir = fabrik_base_path.join("fabrik");
+    // TODO: hidden file on windows?
+    let fabrik_dir = fabrik_base_path.join(".fabrik");
     fs::create_dir(&fabrik_dir)?;
 
-    let fabrik_subdirectories = ["data", "elements", "products", "analysis", "scenarios"];
+    let fabrik_subdirectories = ["scenarios", "stations", "stations", "vehicles", "agencies", "lines"];
     for subdir in fabrik_subdirectories {
         fs::create_dir(fabrik_dir.join(subdir))?;
     }

@@ -5,8 +5,9 @@ use crate::{errors::commands::InteractiveError, types::scenario::FabrikScenario}
 
 pub struct InteractiveOptions {
     // TODO: Add SQL?
-    scenario: FabrikScenario,
-    use_semicolons: bool,
+    // FIX: LOAD SCENARIO ON REPL LOAD
+    pub scenario_name: String,
+    pub use_semicolons: bool,
 }
 
 pub fn run_interactive_repl(options: Option<InteractiveOptions>) -> Result<(), InteractiveError> {

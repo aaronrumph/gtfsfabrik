@@ -1,7 +1,10 @@
 // model for scenario
 
-use crate::types::{
-    agency::FabrikAgency, gtfs_dir::FabrikGtfsDir, line::FabrikLine, station::FabrikStation, vehicle::FabrikVehicle,
+use crate::{
+    errors::fabrik::FabrikLookupError,
+    types::{
+        agency::FabrikAgency, gtfs_dir::FabrikGtfsDir, line::FabrikLine, station::FabrikStation, vehicle::FabrikVehicle,
+    },
 };
 
 pub struct FabrikScenario {

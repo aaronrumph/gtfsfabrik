@@ -1,8 +1,8 @@
 use clap::ValueEnum;
 use geo::Polygon;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, ValueEnum, Serialize)]
+#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
 pub enum GeoScope {
     Place,
     County,
@@ -10,7 +10,7 @@ pub enum GeoScope {
     Csa,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Place {
     pub name: String,
     pub state: Option<String>,

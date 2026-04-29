@@ -2,7 +2,10 @@
 // the same thing
 
 use crate::{
-    Commands, commands, errors::commands::FabrikCommandError, errors::commands::*, fabrik_io::logging::print_success,
+    Commands,
+    commands::{self},
+    errors::commands::{FabrikCommandError, *},
+    fabrik_io::logging::print_success,
 };
 
 /// Thin wrapper around cli that gives function that runs the given command using clap
@@ -11,9 +14,15 @@ pub fn run_command(command: Commands) -> Result<(), FabrikCommandError> {
     match command {
         // if interactive, run repl
         Commands::Interactive {
-            // T
+            use_semicolons,
+            scenario,
         } => {
-            commands::interactive::run_interactive_repl(None)?;
+            // TODO: change from Option? GET RID OF PANIC
+            let interactive_options = commands::interactive::InteractiveOptions {
+                use_semicolons,
+                scenario_name: scenario,
+            };
+            commands::interactive::run_interactive_repl(Some(interactive_options))?;
             Ok(())
         }
         Commands::Init {

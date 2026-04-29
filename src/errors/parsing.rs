@@ -12,6 +12,7 @@ pub enum GeocodingError {
     GeocodingFailed(String),
 }
 
+// SECTION: TimeParsingError
 #[derive(Debug, thiserror::Error)]
 pub enum TimeParsingError {
     #[error("invalid time format '{0}', expected HH:mm:ss")]

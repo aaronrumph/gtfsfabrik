@@ -1,6 +1,7 @@
 // TODO: Docs
 
 pub mod agency;
+pub mod fabrik;
 pub mod geotypes;
 pub mod gtfs_dir;
 pub mod line;

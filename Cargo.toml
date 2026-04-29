@@ -4,17 +4,24 @@ version = "0.1.1" # v0.1.1 (mostly working) RAPTOR implementation
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.102"
 clap = { version = "4.6.0", features = ["color", "derive"] }
 console = "0.16.3"
 dirs = "6.0.0"
 geo = { version = "0.32.0", features = ["serde"] }
+inquire = "0.9.4"
 polars = "0.53.0"
 rayon = "1.11.0"
 reqwest = { version = "0.13.2", features = ["blocking", "json"] }
 rkyv = "0.8.15"
+rustyline = "18.0.0"
+rustyline-derive = "0.12.0"
 serde = { version = "1.0.228", features = ["derive"] }
+shell-words = "1.1.1"
+textwrap = "0.16.2"
 thiserror = "2.0.18"
 toml = "1.0.7"
+trie-rs = "0.4.2"
 xxhash-rust = { version = "0.8.15", features = ["xxh3", "xxh64"] }
 zip = "8.3.0"
 
